@@ -1,4 +1,5 @@
 from symbols import *
+from Context import *
 
 class Error:
 	def __init__(self, name, body, pos):
@@ -26,5 +27,17 @@ class InvalidSyntaxError(Error):
 		super().__init__("InvalidSyntaxError", body, pos)
 
 class DivisionByZeroError(Error):
-	def __init__(self, pos):
+	def __init__(self, pos, context = None):
+		self.context = context
 		super().__init__("DivisionByZeroError", "Cannot divide value by 0", pos)
+	
+	def __repr__(self):
+		if self.context is None:
+			return super().__repr__()
+		else:
+			temp_context = context
+			sentence = ""
+			print(True)
+			while temp_context is not None:
+				sentence += f'{temp_context}'
+			sentence += super().__repr__()

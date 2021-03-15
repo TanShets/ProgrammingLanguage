@@ -5,8 +5,8 @@ while True:
 
 	if cmd.lower() in ['exit', 'quit']:
 		break
-	
-	result, error = run("<stdin>", cmd)
+	context = Context("<stdin>")
+	result, error = run("<stdin>", cmd, context)
 	if error is not None:
 		print(error)
 	else:
