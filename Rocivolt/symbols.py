@@ -5,18 +5,21 @@ TT_MUL = 2
 TT_DIV = 3
 TT_LPARA = 4
 TT_RPARA = 5
+TT_POWER = 6
 
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
-	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA
+	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
+	'^': TT_POWER
 }
 
 T_OPERATOR_INVERSE = {
 	TT_PLUS: '+', TT_MINUS: '-', TT_MUL: '*',
-	TT_DIV: '/', TT_LPARA: '(', TT_RPARA: ')'
+	TT_DIV: '/', TT_LPARA: '(', TT_RPARA: ')',
+	TT_POWER: '^'
 }
 
-T_OPERATOR_KEYS = '+-*/()'
+T_OPERATOR_KEYS = '+-*/()^'
 
 TT_INT = 6
 TT_FLOAT = 7

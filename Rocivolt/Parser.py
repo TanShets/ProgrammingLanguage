@@ -87,6 +87,9 @@ class Parser:
 			else:
 				new_Node = UnOpNode(self.tokens[start_index], self.tokens[self.index])
 			self.next()
+
+			if self.index != TT_EOF and self.tokens[self.index].type == TT_POWER:
+				new_Node = self.get_operation(self.value, [TT_POWER], left = new_Node)
 			return new_Node
 		
 		error = InvalidSyntaxError(
@@ -102,8 +105,11 @@ class Parser:
 	def prodquo(self):
 		return self.get_operation(self.value, [TT_MUL, TT_DIV])
 
-	def get_operation(self, function, operators):
-		left_expression = function()
+	def get_operation(self, function, operators, left = None):
+		if left is None:
+			left_expression = function()
+		else:
+			left_expression = left
 		#print(self.tokens)
 		if type(left_expression) is ErrorNode:
 			return left_expression

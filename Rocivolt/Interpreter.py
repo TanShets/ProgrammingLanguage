@@ -9,7 +9,8 @@ class Value:
         TT_PLUS: 'addition',
         TT_MINUS: 'subtraction',
         TT_MUL: 'multiplication',
-        TT_DIV: 'division'
+        TT_DIV: 'division',
+        TT_POWER: 'exponent'
     }
 
     def __str__(self):
@@ -60,6 +61,10 @@ class Value:
         else:
             self.num /= val.num
             self.context = val.context
+    
+    def exponent(self, val):
+        self.num = self.num ** val.num
+        self.context = val.context
 
 class Interpreter:
     def __init__(self, parse_result, parent_context):
