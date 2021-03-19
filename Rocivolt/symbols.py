@@ -5,27 +5,31 @@ TT_MUL = 2
 TT_DIV = 3
 TT_LPARA = 4
 TT_RPARA = 5
-TT_POWER = 6
+TT_INT = 6
+TT_FLOAT = 7
+TT_ALPHA = 8
+TT_POWER = 9
+
+TT_IDENTIFIER = 10
+TT_EQUATION = 11
 
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
-	'^': TT_POWER
+	'^': TT_POWER, '=': TT_EQUATION
 }
 
 T_OPERATOR_INVERSE = {
 	TT_PLUS: '+', TT_MINUS: '-', TT_MUL: '*',
 	TT_DIV: '/', TT_LPARA: '(', TT_RPARA: ')',
-	TT_POWER: '^'
+	TT_POWER: '^', TT_EQUATION: '='
 }
 
-T_OPERATOR_KEYS = '+-*/()^'
-
-TT_INT = 6
-TT_FLOAT = 7
-TT_ALPHA = 8
+T_OPERATOR_KEYS = '+-*/()^='
 
 T_DIGITS = "0123456789"
+T_ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+T_ALPHANUMERICS = T_DIGITS + T_ALPHABETS
 
 class Position:
 	def __init__(self, line_no, col_no, index, filename, file_text):

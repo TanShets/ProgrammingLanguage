@@ -9,14 +9,15 @@ def run(filename, line, parent_context):
 	lex = Lexer(line, filename)
 
 	tokens, error = lex.make_tokens()
-
+	#print(tokens)
 	parser = Parser(tokens)
 
 	result = parser.parse()
-	
+	#print(result)
 	if error is None and type(result) is not ErrorNode:
 		interpreter = Interpreter(result, parent_context)
 		#print(interpreter.view(result))
 		result, error = interpreter.getResult()
 	#print(type(result))
 	return result, error
+	#return tokens, error

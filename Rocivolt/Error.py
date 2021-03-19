@@ -32,12 +32,29 @@ class DivisionByZeroError(Error):
 		super().__init__("DivisionByZeroError", "Cannot divide value by 0", pos)
 	
 	def __repr__(self):
+		sentence = ""
 		if self.context is None:
-			return super().__repr__()
-		else:
 			temp_context = context
-			sentence = ""
-			print(True)
+			#sentence = ""
+			#print(True)
 			while temp_context is not None:
 				sentence += f'{temp_context}'
-			sentence += super().__repr__()
+				temp_context = temp_context.parent
+		sentence += super().__repr__()
+		return sentence
+
+class NullValueError(Error):
+	def __init__(self, body, pos, context):
+		self.context = context
+		super().__init__("NullValueError", body, pos)
+	
+	def __repr__(self):
+		sentence = ""
+		if self.context is not None:
+			temp_context = context
+			#sentence = ""
+			while temp_context is not None:
+				sentence += f'{temp_context}'
+				temp_context = temp_context.parent
+		sentence += super().__repr__()
+		return sentence

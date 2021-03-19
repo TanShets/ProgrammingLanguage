@@ -9,8 +9,19 @@ class Node:
 		return f'{self.token}'
 
 class NumNode(Node):
-	def __init__(self, token):
+	pass
+
+class VarNode(Node):
+	pass
+
+class VarAssignNode(Node):
+	def __init__(self, var_token, token, expression):
 		super().__init__(token)
+		self.var_token = var_token
+		self.expression = expression
+	
+	def __repr__(self):
+		return f'[({self.var_token}, {self.token}, {self.expression})]'
 
 class UnOpNode(Node):
 	def __init__(self, token, num_token):
@@ -20,12 +31,18 @@ class UnOpNode(Node):
 	def __repr__(self):
 		return f'({self.token}, {self.num_token})'
 	
-	def get_in_NumNode(self):
+	def get_in_ValNode(self):
 		if self.token == '-':
 			new_token = self.token.copy(True)
-			return NumNode(new_token)
+			if new_token.type == TT_IDENTIFIER:
+				return VarNode(new_token)
+			else:
+				return NumNode(new_token)
 		else:
-			return NumNode(self.num_token)
+			if new_token.type == TT_IDENTIFIER:
+				return VarNode(new_token)
+			else:
+				return NumNode(self.num_token)
 
 class BinOpNode(Node):
 	def __init__(self, left_token, token, right_token):
@@ -81,9 +98,12 @@ class Parser:
 		else:
 			start_index = TT_EOF
 
-		if self.index != TT_EOF and self.tokens[self.index].type in [TT_FLOAT, TT_INT]:
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_FLOAT, TT_INT, TT_IDENTIFIER]:
 			if start_index == TT_EOF:
-				new_Node = NumNode(self.tokens[self.index])
+				if self.tokens[self.index].type in [TT_FLOAT, TT_INT]:
+					new_Node = NumNode(self.tokens[self.index])
+				else:
+					new_Node = VarNode(self.tokens[self.index])
 			else:
 				new_Node = UnOpNode(self.tokens[start_index], self.tokens[self.index])
 			self.next()
@@ -100,6 +120,40 @@ class Parser:
 		return ErrorNode(error)
 
 	def addsub(self):
+		#print(self.tokens, self.tokens[self.index])
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_IDENTIFIER:
+			left_token = self.tokens[self.index]
+			#print(left_token)
+			self.next()
+			if self.index != TT_EOF and self.tokens[self.index].type == TT_EQUATION:
+				op_token = self.tokens[self.index]
+				self.next()
+				#print(op_token)
+				right_expression = self.addsub()
+				#print(right_expression)
+				return VarAssignNode(left_token, op_token, right_expression)
+			else:
+				left_expression = VarNode(left_token)
+				#print("3", self.tokens[self.index])
+				if self.index != TT_EOF and self.tokens[self.index].type in [TT_PLUS, TT_MINUS]:
+					return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS], left = left_expression)
+				elif self.index != TT_EOF and self.tokens[self.index].type in [TT_MUL, TT_DIV]:
+					#print("1")
+					return self.get_operation(self.value, [TT_MUL, TT_DIV], left = left_expression)
+				elif self.index != TT_EOF and self.tokens[self.index].type == TT_POWER:
+					left_expression = self.get_operation(self.value, [TT_POWER], left = left_expression)
+					left_expression = self.get_operation(self.value, [TT_MUL, TT_DIV], left = left_expression)
+					return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS], left = left_expression)
+				elif self.index == TT_EOF:
+					return left_expression
+				else:
+					error = InvalidSyntaxError(
+						"Expected '*', '/', '+', '-' or '^'",
+						self.tokens[self.index].pos_start
+					)
+
+					return ErrorNode(error)
+
 		return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS])
 
 	def prodquo(self):
@@ -111,6 +165,7 @@ class Parser:
 		else:
 			left_expression = left
 		#print(self.tokens)
+		#print("2", left_expression)
 		if type(left_expression) is ErrorNode:
 			return left_expression
 

@@ -45,6 +45,14 @@ class Lexer:
 			return Token(TT_FLOAT, val = float(num), pos_start = pos_start, pos_end = self.pos)
 		else:
 			return Token(TT_INT, val = int(num), pos_start = pos_start, pos_end = self.pos)
+	
+	def make_identifier(self):
+		identifier = ""
+		pos_start = self.pos.deepcopy()
+		while self.pos.index != TT_EOF and self.line[self.pos.index] in T_ALPHANUMERICS + '_':
+			identifier += self.line[self.pos.index]
+			self.move()
+		return Token(TT_IDENTIFIER, val = identifier, pos_start = pos_start, pos_end = self.pos)
 
 
 	def make_tokens(self):
@@ -55,6 +63,8 @@ class Lexer:
 			#print(self.line[self.pos.index])
 			if self.line[self.pos.index] in T_DIGITS:
 				tokens.append(self.make_number())
+			elif self.line[self.pos.index] in T_ALPHABETS:
+				tokens.append(self.make_identifier())
 			else:
 				if self.line[self.pos.index] in T_OPERATOR_KEYS:
 					tokens.append(Token(T_OPERATOR[self.line[self.pos.index]], pos_start = self.pos))
