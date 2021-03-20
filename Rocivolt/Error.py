@@ -26,6 +26,10 @@ class InvalidSyntaxError(Error):
 	def __init__(self, body, pos):
 		super().__init__("InvalidSyntaxError", body, pos)
 
+class EoFError(Error):
+	def __init__(self, body, pos):
+		super().__init__("EOFError", body, pos)
+
 class DivisionByZeroError(Error):
 	def __init__(self, pos, context = None):
 		self.context = context

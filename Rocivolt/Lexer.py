@@ -53,13 +53,26 @@ class Lexer:
 			identifier += self.line[self.pos.index]
 			self.move()
 		return Token(TT_IDENTIFIER, val = identifier, pos_start = pos_start, pos_end = self.pos)
-
+	
+	def make_operator(self):
+		temp_char = self.line[self.pos.index]
+		self.move()
+		if self.pos.index != TT_EOF:
+			if self.line[self.pos.index] == '=':
+				temp_char += self.line[self.pos.index]
+				self.move()
+			
+			if T_OPERATOR.get(temp_char, None) is not None:
+				return Token(T_OPERATOR[temp_char], pos_start = self.pos), None
+			else:
+				return None, CharError(f'Expected \'=\' ahead of \'{temp_char}\'', self.pos)
+		return None, EoFError(f'Unexpected End of file with \'{temp_char}\'', self.pos)
 
 	def make_tokens(self):
 		tokens = []
 		error = None
 
-		while self.pos.index != TT_EOF:
+		while self.pos.index != TT_EOF and error is None:
 			#print(self.line[self.pos.index])
 			if self.line[self.pos.index] in T_DIGITS:
 				tokens.append(self.make_number())
@@ -67,7 +80,9 @@ class Lexer:
 				tokens.append(self.make_identifier())
 			else:
 				if self.line[self.pos.index] in T_OPERATOR_KEYS:
-					tokens.append(Token(T_OPERATOR[self.line[self.pos.index]], pos_start = self.pos))
+					token, error = self.make_operator()
+					if error is None and token is not None:
+						tokens.append(token)
 				elif self.line[self.pos.index] not in " \t":
 					#print("Character =", self.line[self.pos.index])
 					#start_pos = self.pos.deepcopy()
@@ -77,6 +92,7 @@ class Lexer:
 						self.pos
 					)
 					break
-				self.move()
+				else:
+					self.move()
 
 		return tokens, error

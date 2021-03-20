@@ -161,5 +161,32 @@ class Interpreter:
         #print(node.var_token.val)
         value = self.view(node.expression, parent_context)
         #print(value)
-        parent_context.var_table.setValue(node.var_token.val, value.num)
+        if node.token.type == TT_EQUATION:
+            parent_context.var_table.setValue(node.var_token.val, value.num)
+        else:
+            variable_value = parent_context.var_table.get(node.var_token.val)
+            if variable_value is None:
+                return Value(node.var_token, parent_context)
+            elif value.num is None:
+                x = Value()
+                x.error = NullValueError(
+                    "Cannot perform arithmetic operations on Null values", 
+                    value.pos, parent_context
+                )
+                return x
+            
+            if node.token.type == TT_INCREMENT:
+                variable_value += value.num
+            elif node.token.type == TT_DECREMENT:
+                variable_value -= value.num
+            elif node.token.type == TT_PRODUCT_INCREMENT:
+                variable_value *= value.num
+            elif node.token.type == TT_PRODUCT_DECREMENT:
+                if value.num == 0:
+                    x = Value()
+                    x.error = DivisionByZeroError(value.pos, parent_context)
+                    return x
+                variable_value /= value.num
+            parent_context.var_table.setValue(node.var_token.val, variable_value)
+
         return Value()

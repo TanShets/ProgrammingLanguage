@@ -125,7 +125,9 @@ class Parser:
 			left_token = self.tokens[self.index]
 			#print(left_token)
 			self.next()
-			if self.index != TT_EOF and self.tokens[self.index].type == TT_EQUATION:
+
+			valid_var_assign_ops = [TT_EQUATION, TT_INCREMENT, TT_DECREMENT, TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT]
+			if self.index != TT_EOF and self.tokens[self.index].type in valid_var_assign_ops:
 				op_token = self.tokens[self.index]
 				self.next()
 				#print(op_token)
