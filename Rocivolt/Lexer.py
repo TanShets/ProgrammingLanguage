@@ -52,6 +52,9 @@ class Lexer:
 		while self.pos.index != TT_EOF and self.line[self.pos.index] in T_ALPHANUMERICS + '_':
 			identifier += self.line[self.pos.index]
 			self.move()
+		#print(list(T_KEYWORDS.keys()))
+		if identifier in T_KEYWORDS.keys():
+			return Token(T_KEYWORDS.get(identifier), val = identifier, pos_start = pos_start, pos_end = self.pos)
 		return Token(TT_IDENTIFIER, val = identifier, pos_start = pos_start, pos_end = self.pos)
 	
 	def make_operator(self):

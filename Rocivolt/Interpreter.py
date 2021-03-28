@@ -6,29 +6,41 @@ from Context import *
 
 class Value:
     operators = {
-        TT_PLUS: 'addition',
-        TT_MINUS: 'subtraction',
-        TT_MUL: 'multiplication',
-        TT_DIV: 'division',
-        TT_POWER: 'exponent'
+        TT_PLUS: 'addition', TT_MINUS: 'subtraction',
+        TT_MUL: 'multiplication', TT_DIV: 'division',
+        TT_POWER: 'exponent', TT_EQUALS: 'equals',
+        TT_GREAT: 'greater', TT_GREAT_EQ: 'greater_e',
+        TT_LESS: 'lesser', TT_LESS_EQ: 'lesser_e',
+        TT_NOT_EQUALS: 'not_equals', TT_AND: 'And',
+        TT_OR: 'Or'
+    }
+
+    decision = {
+        True: 1, False: 0
     }
 
     def __str__(self):
         if self.pos is not None:
-            return f'{self.num}'
+            if self.isBoolean:
+                return f'{T_BACKWARD_BOOLEAN_TRACK[self.num]}'
+            else:
+                return f'{self.num}'
         else:
             return f''
     
     def __repr__(self):
         if self.pos is not None:
-            return f'{self.num}'
+            if self.isBoolean:
+                return f'{T_BACKWARD_BOOLEAN_TRACK[self.num]}'
+            else:
+                return f'{self.num}'
         else:
             return f''
 
     def __init__(self, num_token = None, parent_context = None):
         #print(type(num_token).__name__)
         self.error = None
-
+        self.isBoolean = False
         if num_token is not None:
             #print("1")
             if num_token.type == TT_IDENTIFIER:
@@ -46,6 +58,9 @@ class Value:
                                     f'\'{num_token.val}\' has not been initialized', 
                                     num_token.pos_start, parent_context
                                 )
+            elif num_token.type in [TT_TRUE, TT_FALSE]:
+                self.num = T_KEYWORDS_VALS[num_token.type]
+                self.isBoolean = True
             else:
                 self.num = num_token.val
             self.pos = num_token.pos_start
@@ -67,14 +82,17 @@ class Value:
     
     def addition(self, val):
         self.num += val.num
+        self.isBoolean = False
         self.context = val.context
     
     def subtraction(self, val):
         self.num -= val.num
+        self.isBoolean = False
         self.context = val.context
     
     def multiplication(self, val):
         self.num *= val.num
+        self.isBoolean = False
         self.context = val.context
     
     def division(self, val):
@@ -84,11 +102,45 @@ class Value:
             self.num = None
         else:
             self.num /= val.num
+            self.isBoolean = False
             self.context = val.context
     
     def exponent(self, val):
         self.num = self.num ** val.num
+        self.isBoolean = False
         self.context = val.context
+    
+    def greater(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num > val.num]
+    
+    def lesser(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num < val.num]
+    
+    def equals(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num == val.num]
+    
+    def greater_e(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num >= val.num]
+    
+    def And(self, val):
+        self.num = Value.decision[type(val) is Value and (self.num != 0 and val.num != 0)]
+        self.isBoolean = True
+    
+    def Or(self, val):
+        self.num = Value.decision[type(val) is Value and (self.num != 0 or val.num != 0)]
+        self.isBoolean = True
+    
+    def lesser_e(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num <= val.num]
+    
+    def not_equals(self, val):
+        self.isBoolean = True
+        self.num = Value.decision[self.num != val.num]
 
 class Interpreter:
     def __init__(self, parse_result, parent_context):
@@ -147,10 +199,19 @@ class Interpreter:
         return left
     
     def view_UnOpNode(self, node, parent_context):
-        temp_num = node.num_token.val
-        if node.token.type == '-':
-            temp_num *= -1
-        return Value(temp_num, parent_context)
+        if node.token.type != TT_NOT:
+            temp_num = node.num_token.val
+            if node.token.type == '-':
+                temp_num *= -1
+            return Value(temp_num, parent_context)
+        else:
+            value = self.view(node.num_token, parent_context)
+            if value.num != 0:
+                value.num = 0
+            else:
+                value.num = 1
+            value.isBoolean = True
+            return value
         #return "Found UnOpNode"
     
     def view_VarNode(self, node, parent_context):
@@ -190,3 +251,6 @@ class Interpreter:
             parent_context.var_table.setValue(node.var_token.val, variable_value)
 
         return Value()
+    
+    def view_BooleanNode(self, node, parent_context):
+        return Value(node.token, parent_context)

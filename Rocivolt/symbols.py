@@ -25,6 +25,12 @@ TT_DECREMENT = 19
 TT_PRODUCT_INCREMENT = 20
 TT_PRODUCT_DECREMENT = 21 #Basically division
 
+TT_AND = 22
+TT_OR = 23
+TT_NOT = 24
+TT_TRUE = 25
+TT_FALSE = 26
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
@@ -39,6 +45,17 @@ T_OPERATOR_INVERSE = {
 	TT_DIV: '/', TT_LPARA: '(', TT_RPARA: ')',
 	TT_POWER: '^', TT_EQUATION: '='
 }
+
+T_KEYWORDS = {
+	'and': TT_AND, 'or': TT_OR, 'not': TT_NOT,
+	'true': TT_TRUE, 'false': TT_FALSE
+}
+
+T_KEYWORDS_VALS = {
+	TT_TRUE: 1, TT_FALSE: 0
+}
+
+T_BACKWARD_BOOLEAN_TRACK = ['false', 'true']
 
 T_OPERATOR_KEYS = '+-*/()^=><!'
 
