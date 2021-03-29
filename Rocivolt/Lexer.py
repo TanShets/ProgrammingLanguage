@@ -86,6 +86,9 @@ class Lexer:
 					token, error = self.make_operator()
 					if error is None and token is not None:
 						tokens.append(token)
+				elif self.line[self.pos.index] in T_BLOCK_KEYS:
+					tokens.append(Token(T_BLOCK[self.line[self.pos.index]], pos_start = self.pos))
+					self.move()
 				elif self.line[self.pos.index] not in " \t":
 					#print("Character =", self.line[self.pos.index])
 					#start_pos = self.pos.deepcopy()

@@ -254,3 +254,15 @@ class Interpreter:
     
     def view_BooleanNode(self, node, parent_context):
         return Value(node.token, parent_context)
+    
+    def view_ConditionalNode(self, node, parent_context):
+        for i in node.blocks:
+            condition_value = self.view(i['condition'], parent_context)
+
+            if condition_value.num == 1:
+                return self.view(i['body'], parent_context)
+        
+        if node.else_block is not None:
+            return self.view(node.else_block, parent_context)
+        else:
+            return Value()

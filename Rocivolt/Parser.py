@@ -11,6 +11,12 @@ class Node:
 class NumNode(Node):
 	pass
 
+class ConditionalNode(Node):
+	def __init__(self, blocks, else_block = None):
+		super().__init__(blocks[0])
+		self.blocks = blocks
+		self.else_block = else_block
+
 class BooleanNode(Node):
 	pass
 
@@ -87,7 +93,65 @@ class Parser:
 		else:
 			return TT_EOF
 
+	def make_conditional_statement(self):
+		blocks = []
+		is_if = False
+		while self.index != TT_EOF and self.tokens[self.index].type in [TT_IF, TT_ELSEIF, TT_ELIF]:
+			if is_if and self.tokens[self.index].type == TT_IF:
+				return ConditionalNode(blocks)
+			
+			if (not is_if and self.tokens[self.index].type == TT_IF) or is_if:
+				is_if = True
+				if_token = self.tokens[self.index]
+				self.next()
+				condition = self.expression()
+				if type(condition) is ErrorNode:
+					return condition
+
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
+					self.next()
+					body_token = self.expression()
+					if type(body_token) is ErrorNode:
+						return body_token
+
+					if self.index != TT_EOF and self.tokens[self.index].type == TT_END_BLOCK:
+						blocks.append({
+							'condition': condition,
+							'body': body_token
+						})
+						self.next()
+					else:
+						return InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start)
+				else:
+					return InvalidSyntaxError("Expected '{'", self.tokens[self.index].pos_start)
+			else:
+				if not is_if:
+					return InvalidSyntaxError(f'Expected \'if\'', self.tokens[self.index].pos_start)
+				else:
+					return InvalidSyntaxError(f'Expected \'elseif\', \'elif\', \'else\'', self.tokens[self.index].pos_start)
+		
+		else_block = None
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_ELSE:
+			self.next()
+			if self.tokens[self.index].type == TT_START_BLOCK:
+				self.next()
+				body_expression = self.expression()
+				if type(body_expression) is ErrorNode:
+					return body_expression
+				elif self.tokens[self.index].type == TT_END_BLOCK:
+					else_block = body_expression
+					self.next()
+				else:
+					return InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start)
+
+		if len(blocks) == 0:
+			return EoFError(f'Unexpected end of file and expecting \'if\'', self.tokens[self.index].pos_start)
+		else:
+			return ConditionalNode(blocks, else_block)
+	
 	def value(self):
+		#print(self.tokens[self.index])
+		
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
 			self.next()
 			new_Node = self.expression()
@@ -100,6 +164,11 @@ class Parser:
 				))
 			self.next()
 			return new_Node
+		
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_ELIF, TT_ELSEIF, TT_ELSE]:
+			return ErrorNode("Expected 'if' statement", self.tokens[self.index].start_pos)
+		elif self.index != TT_EOF and self.tokens[self.index].type == TT_IF:
+			return self.make_conditional_statement()
 		
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_NOT:
 			token = self.tokens[self.index]
@@ -128,7 +197,7 @@ class Parser:
 			if self.index != TT_EOF and self.tokens[self.index].type == TT_POWER:
 				new_Node = self.get_operation(self.value, [TT_POWER], left = new_Node)
 			return new_Node
-		
+		print(self.index)
 		error = InvalidSyntaxError(
 			"Not a numerical value", 
 			self.tokens[self.index].pos_start

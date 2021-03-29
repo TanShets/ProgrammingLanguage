@@ -31,6 +31,13 @@ TT_NOT = 24
 TT_TRUE = 25
 TT_FALSE = 26
 
+TT_IF = 27
+TT_ELSEIF = 28
+TT_ELIF = 29
+TT_ELSE = 30
+TT_START_BLOCK = 31
+TT_END_BLOCK = 32
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
@@ -38,6 +45,10 @@ T_OPERATOR = {
 	'<=': TT_LESS_EQ, '>': TT_GREAT, '>=': TT_GREAT_EQ,
 	'==': TT_EQUALS, '!=': TT_NOT_EQUALS, '+=': TT_INCREMENT,
 	'-=': TT_DECREMENT, '*=': TT_PRODUCT_INCREMENT, '/=': TT_PRODUCT_DECREMENT
+}
+
+T_BLOCK = {
+	'{': TT_START_BLOCK, '}': TT_END_BLOCK
 }
 
 T_OPERATOR_INVERSE = {
@@ -48,7 +59,8 @@ T_OPERATOR_INVERSE = {
 
 T_KEYWORDS = {
 	'and': TT_AND, 'or': TT_OR, 'not': TT_NOT,
-	'true': TT_TRUE, 'false': TT_FALSE
+	'true': TT_TRUE, 'false': TT_FALSE, 'if': TT_IF,
+	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE
 }
 
 T_KEYWORDS_VALS = {
@@ -58,6 +70,7 @@ T_KEYWORDS_VALS = {
 T_BACKWARD_BOOLEAN_TRACK = ['false', 'true']
 
 T_OPERATOR_KEYS = '+-*/()^=><!'
+T_BLOCK_KEYS = '}{'
 
 T_DIGITS = "0123456789"
 T_ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
