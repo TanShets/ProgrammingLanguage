@@ -64,7 +64,10 @@ class Value:
             else:
                 self.num = num_token.val
             self.pos = num_token.pos_start
-            self.context = Context(self.pos.filename, self.pos, parent_context)
+            if self.pos is not None:
+                self.context = Context(self.pos.filename, self.pos, parent_context)
+            else:
+                self.context = parent_context
         else:
             self.num = 0
             self.pos = None
@@ -152,7 +155,7 @@ class Interpreter:
     def start(self, parent_context):
         #print(self.parse_result)
         self.num = self.view(self.parse_result, parent_context)
-        if self.num.error != None:
+        if self.num is not None and type(self.num) is Value and self.num.error != None:
             self.error = self.num.error
     
     def getResult(self):
@@ -266,3 +269,58 @@ class Interpreter:
             return self.view(node.else_block, parent_context)
         else:
             return Value()
+    
+    def view_ForConditionNode(self, node, parent_context):
+        if node.change.val == 0:
+            val = Value()
+            val.error = RunTimeError(
+                "change in loop given 0 value - Infinite loop (If such a loop is needed, use while instead)", 
+                node.change.pos_start
+            )
+            return val
+        elif (node.start.val < node.end.val and node.change.val < 0) or (node.start.val > node.end.val and node.change.val > 0):
+            val = Value()
+            temp_pos = node.change.pos_start
+            if node.change.pos_start is None:
+                temp_pos = node.end.pos_start
+            val.error = RunTimeError(
+                "Infinite loop encountered", temp_pos
+            )
+            return val
+        
+        if parent_context.var_table.get(node.var.val) is None or node.hasStarted is False:
+            parent_context.var_table.setValue(node.var.val, node.start.val)
+            node.hasStarted = True
+            #node.index += 1
+            return Value(Token(T_KEYWORDS['true']), parent_context)
+        
+        temp_val = parent_context.var_table.get(node.var.val)
+        temp_val += node.change.val
+
+        if (node.change.val > 0 and temp_val >= node.end.val) or (node.change.val < 0 and temp_val <= node.end.val):
+            parent_context.var_table.setValue(node.var.val, temp_val)
+            return Value(Token(T_KEYWORDS['false']), parent_context)
+        else:
+            parent_context.var_table.setValue(node.var.val, temp_val)
+            #node.index += 1
+            return Value(Token(T_KEYWORDS['true']), parent_context)
+
+    
+    def view_LoopNode(self, node, parent_context):
+        condition = self.view(node.condition, parent_context)
+        values = []
+        while condition.num not in [0, 'false']:
+            for i in node.block:
+                value = self.view(i, parent_context)
+                values.append(value)
+                if value.error is not None:
+                    self.error = value.error
+                    break
+            
+            if self.error is not None:
+                break
+            condition = self.view(node.condition, parent_context)
+        
+        if condition.error is not None:
+            return condition
+        return values

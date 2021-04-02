@@ -62,3 +62,7 @@ class NullValueError(Error):
 				temp_context = temp_context.parent
 		sentence += super().__repr__()
 		return sentence
+
+class RunTimeError(Error):
+	def __init__(self, body, pos):
+		super().__init__("RunTimeError", body, pos)

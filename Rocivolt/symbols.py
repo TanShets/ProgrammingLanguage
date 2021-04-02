@@ -1,4 +1,5 @@
 TT_EOF = -1
+TT_NULL = 'null'
 TT_PLUS = 0
 TT_MINUS = 1
 TT_MUL = 2
@@ -38,6 +39,12 @@ TT_ELSE = 30
 TT_START_BLOCK = 31
 TT_END_BLOCK = 32
 
+TT_FOR = 33
+TT_CHANGE = 34
+TT_WHILE = 35
+TT_IN = 36
+TT_TO = 37
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
@@ -60,7 +67,9 @@ T_OPERATOR_INVERSE = {
 T_KEYWORDS = {
 	'and': TT_AND, 'or': TT_OR, 'not': TT_NOT,
 	'true': TT_TRUE, 'false': TT_FALSE, 'if': TT_IF,
-	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE
+	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE,
+	'for': TT_FOR, 'change': TT_CHANGE, 'while': TT_WHILE,
+	'in': TT_IN, 'to': TT_TO
 }
 
 T_KEYWORDS_VALS = {

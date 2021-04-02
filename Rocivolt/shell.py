@@ -10,6 +10,10 @@ while True:
 	if error is not None:
 		print(error)
 	else:
-		print(result, end = '\n\n')
+		if type(result) is list:
+			for i in result:
+				print(i)
+		else:
+			print(result, end = '\n\n')
 	
 	#print(context.var_table)

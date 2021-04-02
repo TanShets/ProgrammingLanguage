@@ -8,6 +8,16 @@ class Node:
 	def __repr__(self):
 		return f'{self.token}'
 
+class ForConditionNode(Node):
+	def __init__(self, var, token, start, to, end):
+		super().__init__(token)
+		self.var = var
+		self.start = start
+		self.to = to
+		self.end = end
+		self.change = None
+		self.hasStarted = False
+
 class NumNode(Node):
 	pass
 
@@ -65,6 +75,20 @@ class BinOpNode(Node):
 class ErrorNode(Node):
 	def __init__(self, error_token):
 		super().__init__(error_token)
+
+class LoopNode(Node):
+	def __init__(self, token, condition, block, change = None):
+		super().__init__(token)
+		self.condition = condition
+		if self.token.type == TT_FOR and type(self.condition) is ForConditionNode:
+			self.condition.change = change
+		self.block = block
+	
+	def __repr__(self):
+		if self.token.type == TT_FOR:
+			return f'{self.token} {self.condition} {self.change}: {self.block}'
+		else:
+			return f'{self.token} {self.condition}: {self.block}'
 '''
 
 value = float or int
@@ -149,6 +173,125 @@ class Parser:
 		else:
 			return ConditionalNode(blocks, else_block)
 	
+	def make_for_loop_condition(self):
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_IDENTIFIER:
+			var = self.tokens[self.index]
+			self.next()
+			if self.index != TT_EOF and self.tokens[self.index].type in [TT_EQUATION, TT_IN]:
+				eq = self.tokens[self.index]
+				self.next()
+				if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT, TT_MINUS]:
+					if self.tokens[self.index].type == TT_MINUS:
+						self.next()
+						if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT]:
+							self.tokens[self.index].val *= -1
+						else:
+							return ErrorNode(InvalidSyntaxError(
+								"Expected numerical value", self.tokens[self.index].pos_start
+							))
+					
+					start = self.tokens[self.index]
+					self.next()
+					if self.index != TT_EOF and self.tokens[self.index].type == TT_TO:
+						to = self.tokens[self.index]
+						self.next()
+						if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT, TT_MINUS]:
+							if self.tokens[self.index].type == TT_MINUS:
+								self.next()
+								if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT]:
+									self.tokens[self.index].val *= -1
+								else:
+									return ErrorNode(InvalidSyntaxError(
+										"Expected numerical value", self.tokens[self.index].pos_start
+									))
+							end = self.tokens[self.index]
+							self.next()
+							return ForConditionNode(var, eq, start, to, end)
+						else:
+							return ErrorNode(InvalidSyntaxError(
+								"Expected numerical value", self.tokens[self.index].pos_start
+							))
+					else:
+						return ErrorNode(InvalidSyntaxError(
+							"Expected 'to'", self.tokens[self.index].pos_start
+						))
+				else:
+					return ErrorNode(InvalidSyntaxError(
+						"Expected numerical value", self.tokens[self.index].pos_start
+					))
+			else:
+				return ErrorNode(InvalidSyntaxError(
+					"Expected '='", self.tokens[self.index].pos_start
+				))
+		else:
+			return ErrorNode(InvalidSyntaxError(
+				"Expected an iterative variable", self.tokens[self.index].pos_start
+			))
+
+	def make_loop(self):
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_WHILE, TT_FOR]:
+			loop_token = self.tokens[self.index]
+			self.next()
+			if loop_token.type == TT_WHILE:
+				condition = self.expression()
+			else:
+				condition = self.make_for_loop_condition()
+			
+			if type(condition) is ErrorNode:
+				return condition
+
+			change = None
+			if self.index != TT_EOF and loop_token.type == TT_FOR and self.tokens[self.index].type == TT_CHANGE:
+				self.next()
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_EQUATION:
+					self.next()
+					if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT, TT_MINUS]:
+						if self.tokens[self.index].type == TT_MINUS:
+							self.next()
+							if self.index != TT_EOF and self.tokens[self.index].type in [TT_INT, TT_FLOAT]:
+								self.tokens[self.index].val *= -1
+							else:
+								return ErrorNode(InvalidSyntaxError(
+									"Expected 'int', 'float' value", self.tokens[self.index].pos_start
+								))
+						change = self.tokens[self.index]
+						self.next()
+					else:
+						return ErrorNode(InvalidSyntaxError(
+							"Expected 'int', 'float' value", self.tokens[self.index].pos_start
+						))
+				else:
+					return ErrorNode(InvalidSyntaxError("Expected '='", self.tokens[self.index].pos_start))
+			elif self.index != TT_EOF and self.tokens[self.index].type == TT_CHANGE:
+				return ErrorNode(InvalidSyntaxError(
+					"Unexpected term 'change' in a while loop", self.tokens[self.index].pos_start
+				))
+			elif loop_token.type == TT_FOR:
+				change = Token(TT_INT, val = 1)
+
+			if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
+				self.next()
+				block = []
+				while self.index != TT_EOF and self.tokens[self.index].type != TT_END_BLOCK:
+					line = self.expression()
+					block.append(line)
+				
+				if self.index == TT_EOF:
+					return ErrorNode(InvalidSyntaxError(
+						"Expected '}'", self.tokens[self.index].start_pos
+					))
+				self.next()
+				
+				return LoopNode(loop_token, condition, block, change = change)
+			else:
+				return ErrorNode(InvalidSyntaxError(
+					"Expected '{' after condition", self.tokens[self.index].pos_start
+				))
+		else:
+			return ErrorNode(InvalidSyntaxError(
+				"Expected 'for', 'while'", self.tokens[self.index].pos_start
+			))
+
 	def value(self):
 		#print(self.tokens[self.index])
 		
@@ -169,6 +312,9 @@ class Parser:
 			return ErrorNode("Expected 'if' statement", self.tokens[self.index].start_pos)
 		elif self.index != TT_EOF and self.tokens[self.index].type == TT_IF:
 			return self.make_conditional_statement()
+		
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_WHILE, TT_FOR]:
+			return self.make_loop()
 		
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_NOT:
 			token = self.tokens[self.index]
