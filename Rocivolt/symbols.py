@@ -45,17 +45,21 @@ TT_WHILE = 35
 TT_IN = 36
 TT_TO = 37
 
+TT_FUNCTION = 38
+TT_COMMA = 39
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
-	'/': TT_DIV, '(': TT_LPARA, ')': TT_RPARA,
-	'^': TT_POWER, '=': TT_EQUATION, '<': TT_LESS,
-	'<=': TT_LESS_EQ, '>': TT_GREAT, '>=': TT_GREAT_EQ,
-	'==': TT_EQUALS, '!=': TT_NOT_EQUALS, '+=': TT_INCREMENT,
-	'-=': TT_DECREMENT, '*=': TT_PRODUCT_INCREMENT, '/=': TT_PRODUCT_DECREMENT
+	'/': TT_DIV, '^': TT_POWER, '=': TT_EQUATION, 
+	'<': TT_LESS, '<=': TT_LESS_EQ, '>': TT_GREAT, 
+	'>=': TT_GREAT_EQ, '==': TT_EQUALS, '!=': TT_NOT_EQUALS, 
+	'+=': TT_INCREMENT, '-=': TT_DECREMENT, '*=': TT_PRODUCT_INCREMENT, 
+	'/=': TT_PRODUCT_DECREMENT, ',': TT_COMMA
 }
 
 T_BLOCK = {
-	'{': TT_START_BLOCK, '}': TT_END_BLOCK
+	'{': TT_START_BLOCK, '}': TT_END_BLOCK,
+	'(': TT_LPARA, ')': TT_RPARA
 }
 
 T_OPERATOR_INVERSE = {
@@ -69,7 +73,8 @@ T_KEYWORDS = {
 	'true': TT_TRUE, 'false': TT_FALSE, 'if': TT_IF,
 	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE,
 	'for': TT_FOR, 'change': TT_CHANGE, 'while': TT_WHILE,
-	'in': TT_IN, 'to': TT_TO
+	'in': TT_IN, 'to': TT_TO, 'function': TT_FUNCTION,
+	'fn': TT_FUNCTION
 }
 
 T_KEYWORDS_VALS = {
@@ -78,8 +83,8 @@ T_KEYWORDS_VALS = {
 
 T_BACKWARD_BOOLEAN_TRACK = ['false', 'true']
 
-T_OPERATOR_KEYS = '+-*/()^=><!'
-T_BLOCK_KEYS = '}{'
+T_OPERATOR_KEYS = '+-*/^=><!,'
+T_BLOCK_KEYS = '}{()'
 
 T_DIGITS = "0123456789"
 T_ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'

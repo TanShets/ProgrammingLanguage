@@ -76,7 +76,6 @@ class Lexer:
 		error = None
 
 		while self.pos.index != TT_EOF and error is None:
-			#print(self.line[self.pos.index])
 			if self.line[self.pos.index] in T_DIGITS:
 				tokens.append(self.make_number())
 			elif self.line[self.pos.index] in T_ALPHABETS:

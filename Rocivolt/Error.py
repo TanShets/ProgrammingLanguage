@@ -66,3 +66,11 @@ class NullValueError(Error):
 class RunTimeError(Error):
 	def __init__(self, body, pos):
 		super().__init__("RunTimeError", body, pos)
+
+class FunctionDefinitionError(Error):
+	def __init__(self, body, pos):
+		super().__init__("FunctionDefinitionError", body, pos)
+
+class FunctionCallError(Error):
+	def __init__(self, body, pos):
+		super().__init__("FunctionCallError", body, pos)

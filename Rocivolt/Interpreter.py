@@ -48,6 +48,7 @@ class Value:
                 if parent_context is not None:
                     #print("3")
                     self.num = parent_context.var_table.get(num_token.val)
+                    #print(type(parent_context.var_table.get(num_token.val)).__name__)
                 else:
                     self.num = None
                 
@@ -190,6 +191,7 @@ class Interpreter:
         else:
             left = self.view(node.left_token, parent_context)
         right = self.view(node.right_token, parent_context)
+        #print(type(left.num).__name__, type(right.num).__name__)
         #print(left, node.token.type, right)
         #print(left.num, left.error, type(left).__name__)
 
@@ -304,7 +306,6 @@ class Interpreter:
             parent_context.var_table.setValue(node.var.val, temp_val)
             #node.index += 1
             return Value(Token(T_KEYWORDS['true']), parent_context)
-
     
     def view_LoopNode(self, node, parent_context):
         condition = self.view(node.condition, parent_context)
@@ -324,3 +325,33 @@ class Interpreter:
         if condition.error is not None:
             return condition
         return values
+    
+    def view_FunctionDefinitionNode(self, node, parent_context):
+        outcome = parent_context.setFunction(len(node.parameters), node)
+        if type(outcome) is FunctionDefinitionError:
+            self.error = outcome
+        return Value()
+    
+    def view_FunctionCallNode(self, node, parent_context):
+        # print(node)
+        # print(node.parameters)
+        function_definition = parent_context.get(len(node.parameters), node.name)
+        if function_definition is None:
+            self.error = FunctionCallError(f'Function: {node.name} not previously defined', node.token.pos_start)
+            return Value()
+        else:
+            for i in range(len(node.parameters)):
+                parameter_value = self.view(node.parameters[i], parent_context)
+                #print("Val:", function_definition.parameters[i], parameter_value)
+                function_definition.setValue(function_definition.parameters[i], parameter_value.num)
+            
+            body = function_definition.body
+            values = []
+            for i in range(len(body)):
+                #print(body[i])
+                temp_val = self.view(body[i], function_definition.context)
+                if temp_val.error is not None:
+                    self.error = temp_val.error
+                    break
+                values.append(temp_val)
+            return values

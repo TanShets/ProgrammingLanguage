@@ -89,8 +89,24 @@ class LoopNode(Node):
 			return f'{self.token} {self.condition} {self.change}: {self.block}'
 		else:
 			return f'{self.token} {self.condition}: {self.block}'
-'''
 
+class FunctionDefinitionNode(Node):
+	def __init__(self, function_token, name, parameters, body):
+		super().__init__(function_token)
+		self.name = name
+		self.parameters = parameters
+		self.no_of_parameters = len(parameters)
+		self.body = body
+	
+	def __repr__(self):
+		return f'<function: {self.name.val}>'
+
+class FunctionCallNode(Node):
+	def __init__(self, name, parameters):
+		super().__init__(name)
+		self.name = name
+		self.parameters = parameters
+'''
 value = float or int
 prodquo = a * b or a / b
 addsub = a + b or a - b
@@ -292,13 +308,117 @@ class Parser:
 				"Expected 'for', 'while'", self.tokens[self.index].pos_start
 			))
 
+	def make_function(self):
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_FUNCTION:
+			function_token = self.tokens[self.index]
+			self.next()
+			if self.index != TT_EOF:
+				if self.tokens[self.index].type == TT_IDENTIFIER:
+					name = self.tokens[self.index]
+					self.next()
+				else:
+					name = None
+				
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
+					self.next()
+					parameters = []
+					if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER]:
+						val_x = self.value()
+						if type(val_x) is not ErrorNode:
+							parameters.append(val_x)
+							while self.index != TT_EOF and self.tokens[self.index].type == TT_COMMA:
+								self.next()
+								val_x = self.value()
+								if self.index != TT_EOF and type(val_x) == VarNode:
+									parameters.append(val_x)
+								else:
+									return val_x
+						else:
+							return val_x
+							
+					if self.index != TT_EOF and self.tokens[self.index].type == TT_RPARA:
+						self.next()
+						if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
+							body = []
+							self.next()
+							while self.index != TT_EOF and self.tokens[self.index].type != TT_END_BLOCK:
+								expr = self.expression()
+								if type(expr) is ErrorNode:
+									return expr
+								body.append(expr)
+							
+							if self.index != TT_EOF and self.tokens[self.index].type == TT_END_BLOCK:
+								self.next()
+								return FunctionDefinitionNode(function_token, name, parameters, body)
+							else:
+								return ErrorNode(InvalidSyntaxError(
+									"Expected '}'", self.tokens[self.index].pos_start
+								))
+						else:
+							return ErrorNode(InvalidSyntaxError(
+								"Expected '{'", self.tokens[self.index].pos_start
+							))
+					else:
+						return ErrorNode(InvalidSyntaxError(
+							"Expected ')'", self.tokens[self.index].pos_start
+						))
+				else:
+					return ErrorNode(InvalidSyntaxError(
+						"Expected '('", self.tokens[self.index].pos_start
+					))
+			else:
+				return ErrorNode(InvalidSyntaxError(
+					"Expected '(' or name of function", self.tokens[self.index].pos_start
+				))
+		else:
+			return ErrorNode(InvalidSyntaxError(
+				"Expected 'function' or 'fn'", self.tokens[self.index].pos_start
+			))
+
+	def make_function_call(self):
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_IDENTIFIER:
+			name = self.tokens[self.index]
+			self.next()
+			if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
+				self.next()
+				parameters = []
+				if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT]:
+					temp_val = self.value()
+					if type(temp_val) in [LoopNode, ConditionalNode, ErrorNode]:
+						return ErrorNode(InvalidSyntaxError(
+							"Expected numerical value or variable or boolean", 
+							self.tokens[self.index].pos_start
+						))
+					
+					parameters.append(temp_val)
+
+					while self.index != TT_EOF and self.tokens[self.index].type == TT_COMMA:
+						self.next()
+						if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT]:
+							temp_val = self.value()
+							parameters.append(temp_val)
+						else:
+							return ErrorNode(InvalidSyntaxError(
+								"Expected numerical value or variable or boolean",
+								self.tokens[self.index].pos_start
+							))
+				#print(self.tokens[self.index], self.index == TT_EOF)
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_RPARA:
+					return FunctionCallNode(name, parameters)
+				else:
+					return ErrorNode(InvalidSyntaxError(
+						"Expected ')'", self.tokens[self.index].pos_start
+					))
+		else:
+			return ErrorNode(InvalidSyntaxError(
+				"Expected identifier", self.tokens[self.index].pos_start
+			))
+
 	def value(self):
 		#print(self.tokens[self.index])
-		
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
 			self.next()
 			new_Node = self.expression()
-
 			if type(new_Node) is ErrorNode:
 				return new_Node
 			elif self.index == TT_EOF or self.tokens[self.index].type != TT_RPARA:
@@ -312,6 +432,9 @@ class Parser:
 			return ErrorNode("Expected 'if' statement", self.tokens[self.index].start_pos)
 		elif self.index != TT_EOF and self.tokens[self.index].type == TT_IF:
 			return self.make_conditional_statement()
+		
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_FUNCTION:
+			return self.make_function()
 		
 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_WHILE, TT_FOR]:
 			return self.make_loop()
@@ -335,15 +458,24 @@ class Parser:
 				elif self.tokens[self.index].type in [TT_TRUE, TT_FALSE]:
 					new_Node = BooleanNode(self.tokens[self.index])
 				else:
-					new_Node = VarNode(self.tokens[self.index])
+					#new_Node = VarNode(self.tokens[self.index])
+					temp_index = self.peek_next()
+					if temp_index != TT_EOF and self.tokens[temp_index].type == TT_LPARA:
+						new_Node = self.make_function_call()
+					else:
+						new_Node = VarNode(self.tokens[self.index])
 			else:
 				new_Node = UnOpNode(self.tokens[start_index], self.tokens[self.index])
+			
+			if type(new_Node) is ErrorNode:
+				self.next()
+				return new_Node
 			self.next()
 
 			if self.index != TT_EOF and self.tokens[self.index].type == TT_POWER:
 				new_Node = self.get_operation(self.value, [TT_POWER], left = new_Node)
 			return new_Node
-		print(self.index)
+		#print(self.index)
 		error = InvalidSyntaxError(
 			"Not a numerical value", 
 			self.tokens[self.index].pos_start
@@ -362,10 +494,20 @@ class Parser:
 				self.next()
 				op_token = self.tokens[self.index]
 				self.next()
-				#print(op_token)
 				right_expression = self.expression()
-				#print(right_expression)
-				return VarAssignNode(left_token, op_token, right_expression)
+				#print(type(right_expression).__name__)
+				if type(right_expression) is not FunctionDefinitionNode:
+					return VarAssignNode(left_token, op_token, right_expression)
+				elif type(right_expression) is FunctionDefinitionNode and op_token.type == TT_EQUATION:
+					right_expression.name = left_token
+					return right_expression
+				elif type(right_expression) is ErrorNode:
+					return right_expression
+				else:
+					return ErrorNode(InvalidSyntaxError(
+						f'Unexpected \'{T_OPERATOR_INVERSE[op_token.type]}\' instead of \'=\'',
+						self.tokens[self.index].pos_start
+					))
 			# else:
 			# 	left_expression = VarNode(left_token)
 			# 	#print("3", self.tokens[self.index])
@@ -393,42 +535,6 @@ class Parser:
 		return self.get_operation(self.addsub, [TT_LESS, TT_LESS_EQ, TT_GREAT, TT_GREAT_EQ, TT_EQUALS, TT_NOT_EQUALS])
 
 	def addsub(self):
-		#print(self.tokens, self.tokens[self.index])
-		# if self.index != TT_EOF and self.tokens[self.index].type == TT_IDENTIFIER:
-		# 	left_token = self.tokens[self.index]
-		# 	#print(left_token)
-		# 	self.next()
-
-		# 	valid_var_assign_ops = [TT_EQUATION, TT_INCREMENT, TT_DECREMENT, TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT]
-		# 	if self.index != TT_EOF and self.tokens[self.index].type in valid_var_assign_ops:
-		# 		op_token = self.tokens[self.index]
-		# 		self.next()
-		# 		#print(op_token)
-		# 		right_expression = self.addsub()
-		# 		#print(right_expression)
-		# 		return VarAssignNode(left_token, op_token, right_expression)
-		# 	else:
-		# 		left_expression = VarNode(left_token)
-		# 		#print("3", self.tokens[self.index])
-		# 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_PLUS, TT_MINUS]:
-		# 			return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS], left = left_expression)
-		# 		elif self.index != TT_EOF and self.tokens[self.index].type in [TT_MUL, TT_DIV]:
-		# 			#print("1")
-		# 			return self.get_operation(self.value, [TT_MUL, TT_DIV], left = left_expression)
-		# 		elif self.index != TT_EOF and self.tokens[self.index].type == TT_POWER:
-		# 			left_expression = self.get_operation(self.value, [TT_POWER], left = left_expression)
-		# 			left_expression = self.get_operation(self.value, [TT_MUL, TT_DIV], left = left_expression)
-		# 			return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS], left = left_expression)
-		# 		elif self.index == TT_EOF:
-		# 			return left_expression
-		# 		else:
-		# 			error = InvalidSyntaxError(
-		# 				"Expected '*', '/', '+', '-' or '^'",
-		# 				self.tokens[self.index].pos_start
-		# 			)
-
-		# 			return ErrorNode(error)
-
 		return self.get_operation(self.prodquo, [TT_PLUS, TT_MINUS])
 
 	def prodquo(self):
