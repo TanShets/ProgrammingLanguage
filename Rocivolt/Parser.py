@@ -90,6 +90,9 @@ class LoopNode(Node):
 		else:
 			return f'{self.token} {self.condition}: {self.block}'
 
+class StringNode(Node):
+	pass
+
 class FunctionDefinitionNode(Node):
 	def __init__(self, function_token, name, parameters, body):
 		super().__init__(function_token)
@@ -414,6 +417,7 @@ class Parser:
 				"Expected identifier", self.tokens[self.index].pos_start
 			))
 
+
 	def value(self):
 		#print(self.tokens[self.index])
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
@@ -444,6 +448,11 @@ class Parser:
 			self.next()
 			new_val = self.value()
 			return UnOpNode(token, new_val)
+		
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_STRING:
+			token = self.tokens[self.index]
+			self.next()
+			return StringNode(token)
 
 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_PLUS, TT_MINUS]:
 			start_index = self.index

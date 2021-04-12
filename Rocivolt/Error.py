@@ -1,5 +1,5 @@
 from symbols import *
-from Context import *
+# from Context import *
 
 class Error:
 	def __init__(self, name, body, pos):
@@ -74,3 +74,20 @@ class FunctionDefinitionError(Error):
 class FunctionCallError(Error):
 	def __init__(self, body, pos):
 		super().__init__("FunctionCallError", body, pos)
+
+class InvalidTypeError(Error):
+	def __init__(self, body, pos, context = None):
+		self.context = context
+		super().__init__("InvalidTypeError", body, pos)
+	
+	def __repr__(self):
+		sentence = ""
+		if self.context is None:
+			temp_context = context
+			#sentence = ""
+			#print(True)
+			while temp_context is not None:
+				sentence += f'{temp_context}'
+				temp_context = temp_context.parent
+		sentence += super().__repr__()
+		return sentence

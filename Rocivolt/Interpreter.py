@@ -146,6 +146,52 @@ class Value:
         self.isBoolean = True
         self.num = Value.decision[self.num != val.num]
 
+class StringValue(Value):
+    def __init__(self, string_token = None, parent_context = None):
+        if string_token is not None and string_token.type == TT_STRING:
+            super().__init__(string_token, parent_context)
+        else:
+            self.num = None
+        
+    def operation(self, val, op):
+        if type(val) is StringValue:
+            #print(True)
+            method_name = StringValue.operators.get(op.type, '')
+
+            if method_name != '':
+                method = getattr(self, method_name)
+                #print(False)
+                method(val)
+    
+    def multiplication(self, val):
+        if type(val) is Value:
+            for i in range(val.num):
+                self.num += self.num
+    
+    def addition(self, val):
+        if type(val) is StringValue:
+            super().addition(val)
+        else:
+            self.error = InvalidTypeError('Cannot add non-string to string', val.pos, self.context)
+    
+    def subtraction(self, val):
+        self.error = InvalidTypeError('Cannot subtract from string', val.pos, self.context)
+    
+    def division(self, val):
+        self.error = InvalidTypeError('Cannot divide with string', val.pos, self.context)
+    
+    def exponent(self, val):
+        self.error = InvalidTypeError("Cannot exponentially raise string", val.pos, self.context)
+    
+    def And(self, val):
+        self.num = StringValue.decision[type(val) is StringValue and self.num != "" and val.num != ""]
+        self.isBoolean = True
+
+    def Or(self, val):
+        self.num = Value.decision[type(val) is StringValue and (self.num != "" or val.num != "")]
+        self.isBoolean = True
+        
+
 class Interpreter:
     def __init__(self, parse_result, parent_context):
         self.num = Value()
@@ -196,12 +242,16 @@ class Interpreter:
         #print(left.num, left.error, type(left).__name__)
 
         if left.error is None and right.error is None:
+            #print(type(left).__name__, type(right).__name__)
             left.operation(right, node.token)
         elif right.error is not None:
             left = right
         #print(left)
         #return f'({left}, "BinOpNode" = {node.token}, {right})'
         return left
+    
+    def view_StringNode(self, node, parent_context):
+        return StringValue(node.token, parent_context)
     
     def view_UnOpNode(self, node, parent_context):
         if node.token.type != TT_NOT:

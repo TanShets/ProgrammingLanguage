@@ -48,6 +48,9 @@ TT_TO = 37
 TT_FUNCTION = 38
 TT_COMMA = 39
 
+TT_STRING = 40
+TT_ESCAPE_CHARACTER = 41
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '^': TT_POWER, '=': TT_EQUATION, 
@@ -85,6 +88,7 @@ T_BACKWARD_BOOLEAN_TRACK = ['false', 'true']
 
 T_OPERATOR_KEYS = '+-*/^=><!,'
 T_BLOCK_KEYS = '}{()'
+T_STRING_KEYS = '"\''
 
 T_DIGITS = "0123456789"
 T_ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
