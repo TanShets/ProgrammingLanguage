@@ -93,6 +93,14 @@ class LoopNode(Node):
 class StringNode(Node):
 	pass
 
+class ArrayNode(Node):
+	def __init__(self, nodes):
+		super().__init__(nodes[0].token)
+		self.nodes = nodes
+	
+	def __repr__(self):
+		return f'{self.nodes}'
+
 class FunctionDefinitionNode(Node):
 	def __init__(self, function_token, name, parameters, body):
 		super().__init__(function_token)
@@ -417,6 +425,46 @@ class Parser:
 				"Expected identifier", self.tokens[self.index].pos_start
 			))
 
+	def make_array(self):
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_ARRAY, TT_ARRAY_BLOCK_START]:
+			temp_start = self.tokens[self.index]
+			self.next()
+			end_char_type = None
+			if temp_start.type == TT_ARRAY:
+				if self.tokens[self.index].type == TT_LPARA:
+					end_char_type = TT_RPARA
+					self.next()
+				else:
+					return ErrorNode(InvalidSyntaxError(
+						"Expected '('", self.tokens[self.index].pos_start
+					))
+			else:
+				end_char_type = TT_ARRAY_BLOCK_END
+			
+			node_list = []
+			isContinued = True
+			while self.index != TT_EOF and self.tokens[self.index].type != end_char_type and isContinued:
+				node = self.comparison_expression()
+				node_list.append(node)
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_COMMA:
+					self.next()
+				else:
+					isContinued = False
+			
+			if self.index == TT_EOF and self.tokens[self.index].type != end_char_type:
+				val_char = {TT_RPARA: ')', TT_ARRAY_BLOCK_END: ']'}
+				return ErrorNode(InvalidSyntaxError(
+					f'Expected \'{val_char[end_char_type]}\'', self.tokens[self.index].pos_start
+				))
+			elif self.index != TT_EOF and isContinued:
+				return ErrorNode(InvalidSyntaxError(
+					"Expected another value before ending array", self.tokens[self.index].pos_start
+				))
+			else:
+				self.next()
+				return ArrayNode(node_list)
+		else:
+			return ErrorNode(InvalidSyntaxError("Expected 'array', '['", self.tokens[self.index].pos_start))
 
 	def value(self):
 		#print(self.tokens[self.index])
@@ -433,7 +481,7 @@ class Parser:
 			return new_Node
 		
 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_ELIF, TT_ELSEIF, TT_ELSE]:
-			return ErrorNode("Expected 'if' statement", self.tokens[self.index].start_pos)
+			return ErrorNode(InvalidSyntaxError("Expected 'if' statement", self.tokens[self.index].pos_start))
 		elif self.index != TT_EOF and self.tokens[self.index].type == TT_IF:
 			return self.make_conditional_statement()
 		
@@ -453,6 +501,9 @@ class Parser:
 			token = self.tokens[self.index]
 			self.next()
 			return StringNode(token)
+		
+		if self.index != TT_EOF and self.tokens[self.index].type in [TT_ARRAY, TT_ARRAY_BLOCK_START]:
+			return self.make_array()
 
 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_PLUS, TT_MINUS]:
 			start_index = self.index

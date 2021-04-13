@@ -13,7 +13,7 @@ def run(filename, line, parent_context):
 	parser = Parser(tokens)
 
 	result = parser.parse()
-	#print(result)
+	# #print(result)
 	if error is None and type(result) is not ErrorNode:
 		interpreter = Interpreter(result, parent_context)
 		#print(interpreter.view(result))

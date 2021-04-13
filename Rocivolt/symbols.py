@@ -51,6 +51,10 @@ TT_COMMA = 39
 TT_STRING = 40
 TT_ESCAPE_CHARACTER = 41
 
+TT_ARRAY = 42
+TT_ARRAY_BLOCK_START = 43
+TT_ARRAY_BLOCK_END = 44
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '^': TT_POWER, '=': TT_EQUATION, 
@@ -62,7 +66,8 @@ T_OPERATOR = {
 
 T_BLOCK = {
 	'{': TT_START_BLOCK, '}': TT_END_BLOCK,
-	'(': TT_LPARA, ')': TT_RPARA
+	'(': TT_LPARA, ')': TT_RPARA,
+	'[': TT_ARRAY_BLOCK_START, ']': TT_ARRAY_BLOCK_END
 }
 
 T_OPERATOR_INVERSE = {
@@ -77,7 +82,7 @@ T_KEYWORDS = {
 	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE,
 	'for': TT_FOR, 'change': TT_CHANGE, 'while': TT_WHILE,
 	'in': TT_IN, 'to': TT_TO, 'function': TT_FUNCTION,
-	'fn': TT_FUNCTION
+	'fn': TT_FUNCTION, 'array': TT_ARRAY
 }
 
 T_KEYWORDS_VALS = {
@@ -87,7 +92,7 @@ T_KEYWORDS_VALS = {
 T_BACKWARD_BOOLEAN_TRACK = ['false', 'true']
 
 T_OPERATOR_KEYS = '+-*/^=><!,'
-T_BLOCK_KEYS = '}{()'
+T_BLOCK_KEYS = '}{()[]'
 T_STRING_KEYS = '"\''
 
 T_DIGITS = "0123456789"

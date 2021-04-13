@@ -191,6 +191,56 @@ class StringValue(Value):
         self.num = Value.decision[type(val) is StringValue and (self.num != "" or val.num != "")]
         self.isBoolean = True
         
+class ArrayValue(Value):
+    def __init__(self, array_token = None, parent_context = None, node = None):
+        if array_token is not None and type(array_token) is list:
+            #print(type(array_token))
+            super().__init__(node.token, parent_context)
+            self.values = array_token
+            self.num = [i.num for i in array_token]
+        else:
+            self.num = None
+        
+    def operation(self, val, op):
+        if type(val) is ArrayValue:
+            #print(True)
+            method_name = ArrayValue.operators.get(op.type, '')
+
+            if method_name != '':
+                method = getattr(self, method_name)
+                #print(False)
+                method(val)
+    
+    def multiplication(self, val):
+        if type(val) is Value:
+            for i in range(val.num):
+                self.num += self.num
+    
+    def addition(self, val):
+        if type(val) is ArrayValue:
+            super().addition(val)
+        else:
+            self.error = InvalidTypeError('Cannot add non-array to array', val.pos, self.context)
+    
+    def subtraction(self, val):
+        self.error = InvalidTypeError('Cannot subtract from array', val.pos, self.context)
+    
+    def division(self, val):
+        self.error = InvalidTypeError('Cannot divide with array', val.pos, self.context)
+    
+    def exponent(self, val):
+        self.error = InvalidTypeError("Cannot exponentially raise array", val.pos, self.context)
+    
+    def And(self, val):
+        self.num = StringValue.decision[type(val) is StringValue and self.num != [] and val.num != []]
+        self.isBoolean = True
+
+    def Or(self, val):
+        self.num = Value.decision[type(val) is StringValue and (self.num != [] or val.num != [])]
+        self.isBoolean = True
+    
+    def __repr__(self):
+        return f'{self.num}'
 
 class Interpreter:
     def __init__(self, parse_result, parent_context):
@@ -283,21 +333,30 @@ class Interpreter:
             variable_value = parent_context.var_table.get(node.var_token.val)
             if variable_value is None:
                 return Value(node.var_token, parent_context)
-            elif value.num is None:
+            elif value is None or value.num is None:
                 x = Value()
                 x.error = NullValueError(
                     "Cannot perform arithmetic operations on Null values", 
                     value.pos, parent_context
                 )
                 return x
+            elif value is not None and value.error is not None:
+                return value
             
+            x_type = type(variable_value).__name__
             if node.token.type == TT_INCREMENT:
-                variable_value += value.num
-            elif node.token.type == TT_DECREMENT:
+                stat1 = (x_type in ['float', 'int'] and type(value) is Value)
+                stat2 = (x_type == 'str' and type(value) is StringValue)
+                stat3 = (x_type == 'list' and type(value) is ArrayValue)
+                if stat1 or stat2 or stat3:
+                    variable_value += value.num
+                else:
+                    self.error = InvalidTypeError("Mismatched values for operation", value.pos, parent_context)
+            elif node.token.type == TT_DECREMENT and (x_type in ['float', 'int'] and type(value) is Value):
                 variable_value -= value.num
-            elif node.token.type == TT_PRODUCT_INCREMENT:
+            elif node.token.type == TT_PRODUCT_INCREMENT and (x_type in ['float', 'int'] and type(value) is Value):
                 variable_value *= value.num
-            elif node.token.type == TT_PRODUCT_DECREMENT:
+            elif node.token.type == TT_PRODUCT_DECREMENT and (x_type in ['float', 'int'] and type(value) is Value):
                 if value.num == 0:
                     x = Value()
                     x.error = DivisionByZeroError(value.pos, parent_context)
@@ -405,3 +464,13 @@ class Interpreter:
                     break
                 values.append(temp_val)
             return values
+    
+    def view_ArrayNode(self, node, parent_context):
+        values = []
+        for i in node.nodes:
+            val = self.view(i, parent_context)
+            if val.error is not None:
+                return val
+            
+            values.append(val)
+        return ArrayValue(values, parent_context, node.nodes[0])
