@@ -86,16 +86,26 @@ class LoopNode(Node):
 	
 	def __repr__(self):
 		if self.token.type == TT_FOR:
-			return f'{self.token} {self.condition} {self.change}: {self.block}'
+			start = '{'
+			end = '}'
+			return f'{self.token} {self.condition} {self.condition.change} {start} {self.block} {end}'
 		else:
-			return f'{self.token} {self.condition}: {self.block}'
+			return f'{self.token} {self.condition} {start} {self.block} {end}'
+
+class LoopPrecursorNode(Node):
+	def __init__(self, token, condition, hasStarted, change = None):
+		super().__init__(token)
+		self.condition = condition
+		self.change = change
+		self.hasStarted = hasStarted
 
 class StringNode(Node):
 	pass
 
 class ArrayNode(Node):
-	def __init__(self, nodes):
-		super().__init__(nodes[0].token)
+	def __init__(self, nodes, keys = None):
+		#super().__init__(nodes[0].token)
+		self.keys = keys
 		self.nodes = nodes
 	
 	def __repr__(self):
@@ -111,6 +121,12 @@ class FunctionDefinitionNode(Node):
 	
 	def __repr__(self):
 		return f'<function: {self.name.val}>'
+
+class FunctionDefinitionPrecursorNode(Node):
+	def __init__(self, function_token, parameters, hasStarted):
+		super().__init__(function_token)
+		self.parameters = parameters
+		self.hasStarted = hasStarted
 
 class FunctionCallNode(Node):
 	def __init__(self, name, parameters):
@@ -217,7 +233,7 @@ class Parser:
 								"Expected numerical value", self.tokens[self.index].pos_start
 							))
 					
-					start = self.tokens[self.index]
+					start = NumNode(self.tokens[self.index])
 					self.next()
 					if self.index != TT_EOF and self.tokens[self.index].type == TT_TO:
 						to = self.tokens[self.index]
@@ -231,7 +247,7 @@ class Parser:
 									return ErrorNode(InvalidSyntaxError(
 										"Expected numerical value", self.tokens[self.index].pos_start
 									))
-							end = self.tokens[self.index]
+							end = NumNode(self.tokens[self.index])
 							self.next()
 							return ForConditionNode(var, eq, start, to, end)
 						else:
@@ -281,7 +297,7 @@ class Parser:
 								return ErrorNode(InvalidSyntaxError(
 									"Expected 'int', 'float' value", self.tokens[self.index].pos_start
 								))
-						change = self.tokens[self.index]
+						change = NumNode(self.tokens[self.index])
 						self.next()
 					else:
 						return ErrorNode(InvalidSyntaxError(
@@ -294,7 +310,7 @@ class Parser:
 					"Unexpected term 'change' in a while loop", self.tokens[self.index].pos_start
 				))
 			elif loop_token.type == TT_FOR:
-				change = Token(TT_INT, val = 1)
+				change = NumNode(Token(TT_INT, val = 1))
 
 			if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
 				self.next()
@@ -310,6 +326,8 @@ class Parser:
 				self.next()
 				
 				return LoopNode(loop_token, condition, block, change = change)
+			elif self.index == TT_EOF:
+				return LoopPrecursorNode(loop_token, condition, False, change = change)
 			else:
 				return ErrorNode(InvalidSyntaxError(
 					"Expected '{' after condition", self.tokens[self.index].pos_start
@@ -352,6 +370,9 @@ class Parser:
 						if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
 							body = []
 							self.next()
+							if self.index == TT_EOF:
+								return FunctionDefinitionPrecursorNode(function_token, name, parameters, True)
+
 							while self.index != TT_EOF and self.tokens[self.index].type != TT_END_BLOCK:
 								expr = self.expression()
 								if type(expr) is ErrorNode:
@@ -365,6 +386,8 @@ class Parser:
 								return ErrorNode(InvalidSyntaxError(
 									"Expected '}'", self.tokens[self.index].pos_start
 								))
+						elif self.index == TT_EOF:
+							return FunctionDefinitionPrecursorNode(function_token, name, parameters, False)
 						else:
 							return ErrorNode(InvalidSyntaxError(
 								"Expected '{'", self.tokens[self.index].pos_start
@@ -441,11 +464,28 @@ class Parser:
 			else:
 				end_char_type = TT_ARRAY_BLOCK_END
 			
-			node_list = []
+			node_list = dict()
+			keys = []
 			isContinued = True
+			index_counter = 0
 			while self.index != TT_EOF and self.tokens[self.index].type != end_char_type and isContinued:
 				node = self.comparison_expression()
-				node_list.append(node)
+				#node_list.append(node)
+				if self.index != TT_EOF and self.tokens[self.index].type == TT_ARRAY_KEY_VAL_SEPARATOR:
+					key = node
+					self.next()
+					node = self.comparison_expression()
+					if type(node) is not ErrorNode:
+						keys.append(key)
+						node_list[key] = node
+					else:
+						return node
+				else:
+					new_key = NumNode(Token(TT_INT, val = int(index_counter), pos_start = node.token.pos_start))
+					node_list[new_key] = node
+					keys.append(new_key)
+					index_counter += 1
+
 				if self.index != TT_EOF and self.tokens[self.index].type == TT_COMMA:
 					self.next()
 				else:
@@ -462,7 +502,7 @@ class Parser:
 				))
 			else:
 				self.next()
-				return ArrayNode(node_list)
+				return ArrayNode(node_list, keys = keys)
 		else:
 			return ErrorNode(InvalidSyntaxError("Expected 'array', '['", self.tokens[self.index].pos_start))
 

@@ -47,7 +47,7 @@ class Value:
                 #print("2")
                 if parent_context is not None:
                     #print("3")
-                    self.num = parent_context.var_table.get(num_token.val)
+                    self.num = parent_context.var_table.get(num_token.val).num
                     #print(type(parent_context.var_table.get(num_token.val)).__name__)
                 else:
                     self.num = None
@@ -193,13 +193,40 @@ class StringValue(Value):
         
 class ArrayValue(Value):
     def __init__(self, array_token = None, parent_context = None, node = None):
-        if array_token is not None and type(array_token) is list:
+        if array_token is not None and type(array_token) is dict:
             #print(type(array_token))
+            self.pos = None
             super().__init__(node.token, parent_context)
             self.values = array_token
-            self.num = [i.num for i in array_token]
+            self.num = dict()
+            for i in array_token:
+                self.num[i] = array_token[i]
         else:
             self.num = None
+            self.pos = None
+    
+    def __str__(self):
+        word = '['
+        keys = list(self.num.keys())
+        for i in range(len(keys)):
+            #print(type(keys[i]).__name__)
+            if type(keys[i]) is StringValue:
+                word += '\''
+                word += keys[i].__str__()
+                word += '\': '
+            
+            if type(self.num[keys[i]]) is StringValue:
+                word += '\''
+                word += self.num[keys[i]].__str__()
+                word += '\''
+            else:
+                word += str(self.num[keys[i]])
+            
+            if i != len(keys) - 1:
+                word += ', '
+        word += ']'
+
+        return word
         
     def operation(self, val, op):
         if type(val) is ArrayValue:
@@ -261,7 +288,7 @@ class Interpreter:
     def view(self, node, parent_context):
         #print(node)
         method_name = 'view_' + type(node).__name__
-
+        #print(method_name)
         method_pointer = getattr(self, method_name, 'failure')
 
         return method_pointer(node, parent_context)
@@ -328,7 +355,7 @@ class Interpreter:
         value = self.view(node.expression, parent_context)
         #print(value)
         if node.token.type == TT_EQUATION:
-            parent_context.var_table.setValue(node.var_token.val, value.num)
+            parent_context.var_table.setValue(node.var_token.val, value)
         else:
             variable_value = parent_context.var_table.get(node.var_token.val)
             if variable_value is None:
@@ -345,23 +372,23 @@ class Interpreter:
             
             x_type = type(variable_value).__name__
             if node.token.type == TT_INCREMENT:
-                stat1 = (x_type in ['float', 'int'] and type(value) is Value)
-                stat2 = (x_type == 'str' and type(value) is StringValue)
-                stat3 = (x_type == 'list' and type(value) is ArrayValue)
+                stat1 = (x_type == 'Value' and type(value) is Value)
+                stat2 = (x_type == 'StringValue' and type(value) is StringValue)
+                stat3 = (x_type == 'ArrayValue' and type(value) is ArrayValue)
                 if stat1 or stat2 or stat3:
-                    variable_value += value.num
+                    variable_value.addition(value)
                 else:
                     self.error = InvalidTypeError("Mismatched values for operation", value.pos, parent_context)
             elif node.token.type == TT_DECREMENT and (x_type in ['float', 'int'] and type(value) is Value):
-                variable_value -= value.num
+                variable_value.subtract(value)
             elif node.token.type == TT_PRODUCT_INCREMENT and (x_type in ['float', 'int'] and type(value) is Value):
-                variable_value *= value.num
+                variable_value.multiply(value)
             elif node.token.type == TT_PRODUCT_DECREMENT and (x_type in ['float', 'int'] and type(value) is Value):
                 if value.num == 0:
                     x = Value()
                     x.error = DivisionByZeroError(value.pos, parent_context)
                     return x
-                variable_value /= value.num
+                variable_value.divide(value)
             parent_context.var_table.setValue(node.var_token.val, variable_value)
 
         return Value()
@@ -382,33 +409,39 @@ class Interpreter:
             return Value()
     
     def view_ForConditionNode(self, node, parent_context):
-        if node.change.val == 0:
+        tok_a = node.start.token
+        tok_b = node.end.token
+        tok_c = node.change.token
+
+        if node.change.token.val == 0:
             val = Value()
             val.error = RunTimeError(
                 "change in loop given 0 value - Infinite loop (If such a loop is needed, use while instead)", 
-                node.change.pos_start
+                node.change.token.pos_start
             )
             return val
-        elif (node.start.val < node.end.val and node.change.val < 0) or (node.start.val > node.end.val and node.change.val > 0):
+        elif (tok_a.val < tok_b.val and tok_c.val < 0) or (tok_a.val > tok_b.val and tok_c.val > 0):
             val = Value()
-            temp_pos = node.change.pos_start
-            if node.change.pos_start is None:
-                temp_pos = node.end.pos_start
+            temp_pos = node.change.token.pos_start
+            if node.change.token.pos_start is None:
+                temp_pos = node.end.token.pos_start
             val.error = RunTimeError(
                 "Infinite loop encountered", temp_pos
             )
             return val
         
         if parent_context.var_table.get(node.var.val) is None or node.hasStarted is False:
-            parent_context.var_table.setValue(node.var.val, node.start.val)
+            start_value = self.view(node.start, parent_context)
+            parent_context.var_table.setValue(node.var.val, start_value)
             node.hasStarted = True
             #node.index += 1
             return Value(Token(T_KEYWORDS['true']), parent_context)
         
         temp_val = parent_context.var_table.get(node.var.val)
-        temp_val += node.change.val
+        change_val = self.view(node.change, parent_context)
+        temp_val.addition(change_val)
 
-        if (node.change.val > 0 and temp_val >= node.end.val) or (node.change.val < 0 and temp_val <= node.end.val):
+        if (tok_c.val > 0 and temp_val.num >= tok_b.val) or (tok_c.val < 0 and temp_val <= tok_b.val):
             parent_context.var_table.setValue(node.var.val, temp_val)
             return Value(Token(T_KEYWORDS['false']), parent_context)
         else:
@@ -423,16 +456,28 @@ class Interpreter:
             for i in node.block:
                 value = self.view(i, parent_context)
                 values.append(value)
-                if value.error is not None:
+                #print(value)
+                if type(value) in [StringValue, Value] and value.error is not None:
                     self.error = value.error
                     break
+                elif type(value) is list and len(value) > 0 and type(value[0]) in [StringValue, Value]:
+                    for i in value:
+                        if i.error is not None:
+                            self.error = i.error
+                            break
+                    
+                    if self.error is not None:
+                        break
             
             if self.error is not None:
                 break
             condition = self.view(node.condition, parent_context)
+        node.condition.hasStarted = False
         
         if condition.error is not None:
             return condition
+        
+        #print(values)
         return values
     
     def view_FunctionDefinitionNode(self, node, parent_context):
@@ -466,11 +511,16 @@ class Interpreter:
             return values
     
     def view_ArrayNode(self, node, parent_context):
-        values = []
-        for i in node.nodes:
-            val = self.view(i, parent_context)
+        values = {}
+        for i in node.keys:
+            #print("Val:", i, node.nodes[i])
+            #val = self.view(i, parent_context)
+            key = self.view(i, parent_context)
+            val = self.view(node.nodes[i], parent_context)
             if val.error is not None:
                 return val
+            elif key.error is not None:
+                return key
             
-            values.append(val)
-        return ArrayValue(values, parent_context, node.nodes[0])
+            values[key] = val
+        return ArrayValue(values, parent_context, node.nodes[node.keys[0]])

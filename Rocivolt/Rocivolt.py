@@ -13,6 +13,23 @@ def run(filename, line, parent_context):
 	parser = Parser(tokens)
 
 	result = parser.parse()
+	#print(result)
+	if type(result) in [LoopPrecursorNode, FunctionDefinitionPrecursorNode]:
+		if filename == 'stdin':
+			pass
+		else:
+			if result.hasStarted:
+				return ErrorNode(
+					InvalidSyntaxError(
+						"Expected '}'", result.token.pos_start
+					)
+				)
+			else:
+				return ErrorNode(
+					InvalidSyntaxError(
+						"Expected '{'", result.token.pos_start
+					)
+				)
 	# #print(result)
 	if error is None and type(result) is not ErrorNode:
 		interpreter = Interpreter(result, parent_context)
