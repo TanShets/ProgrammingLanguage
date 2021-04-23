@@ -1,0 +1,37 @@
+function add(a, b, c)
+{
+    a + b + c
+    a - b - c
+    print("Hi man!!!!")
+
+    for i = 0 to 10
+    {
+        for j = 1 to 5
+        {
+            a += 1
+        }
+    }
+
+    return a + b + c
+}
+
+function factorial(num)
+{
+    if num == 0 or num == 1
+    {
+        return 1
+    }
+    else
+    {
+        return num * factorial(num - 1)
+    }
+}
+
+x = add(5, 6, 7)
+print(x)
+y = string(input("Enter a number: "))
+x = string(string(x) + "gufnjdv")
+
+z = factorial(5)
+print(x, y)
+print(z)

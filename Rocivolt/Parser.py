@@ -8,6 +8,14 @@ class Node:
 	def __repr__(self):
 		return f'{self.token}'
 
+class ReturnNode(Node):
+	def __init__(self, token, expression):
+		super().__init__(token)
+		self.expression = expression
+	
+	def __repr__(self):
+		return f'{self.token}: {self.expression}'
+
 class ForConditionNode(Node):
 	def __init__(self, var, token, start, to, end):
 		super().__init__(token)
@@ -26,6 +34,20 @@ class ConditionalNode(Node):
 		super().__init__(blocks[0])
 		self.blocks = blocks
 		self.else_block = else_block
+	
+	def __str__(self):
+		word = ""
+		for i in self.blocks:
+			word += str(i) + "\n"
+		if self.else_block is not None:
+			word += str(self.else_block) + '\n'
+		return word
+	
+	def __repr__(self):
+		return self.__str__()
+
+class NullNode(Node):
+	pass
 
 class BooleanNode(Node):
 	pass
@@ -99,6 +121,9 @@ class LoopPrecursorNode(Node):
 		self.change = change
 		self.hasStarted = hasStarted
 
+class BreakNode(Node):
+	pass
+
 class StringNode(Node):
 	pass
 
@@ -133,6 +158,15 @@ class FunctionCallNode(Node):
 		super().__init__(name)
 		self.name = name
 		self.parameters = parameters
+	
+	def __str__(self):
+		return f'({self.name}: {self.parameters})'
+	
+	def __repr__(self):
+		return self.__str__()
+
+class InBuiltFunctionCallNode(FunctionCallNode):
+	pass
 '''
 value = float or int
 prodquo = a * b or a / b
@@ -143,10 +177,10 @@ Then look at b * c (prodquo) and then a - (term) -> addsub
 '''
 
 class Parser:
-	def __init__(self, tokens):
+	def __init__(self, tokens, index = 0):
 		self.tokens = tokens
 		self.n = len(tokens)
-		self.index = 0
+		self.index = index
 
 	def next(self):
 		if self.index >= 0 and self.index < self.n - 1:
@@ -178,38 +212,55 @@ class Parser:
 				if self.index != TT_EOF and self.tokens[self.index].type == TT_START_BLOCK:
 					self.next()
 					body_token = self.expression()
+					body = [body_token]
 					if type(body_token) is ErrorNode:
 						return body_token
+					
+					while self.index != TT_EOF and self.tokens[self.index].type != TT_END_BLOCK:
+						body_token = self.expression()
+						if type(body_token) is ErrorNode:
+							return body_token
+						body.append(body_token)
 
 					if self.index != TT_EOF and self.tokens[self.index].type == TT_END_BLOCK:
 						blocks.append({
 							'condition': condition,
-							'body': body_token
+							'body': body
 						})
 						self.next()
 					else:
-						return InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start)
+						return ErrorNode(InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start))
 				else:
-					return InvalidSyntaxError("Expected '{'", self.tokens[self.index].pos_start)
+					return ErrorNode(InvalidSyntaxError("Expected '{'", self.tokens[self.index].pos_start))
 			else:
 				if not is_if:
-					return InvalidSyntaxError(f'Expected \'if\'', self.tokens[self.index].pos_start)
+					return ErrorNode(InvalidSyntaxError(f'Expected \'if\'', self.tokens[self.index].pos_start))
 				else:
-					return InvalidSyntaxError(f'Expected \'elseif\', \'elif\', \'else\'', self.tokens[self.index].pos_start)
+					return ErrorNode(InvalidSyntaxError(
+						f'Expected \'elseif\', \'elif\', \'else\'', self.tokens[self.index].pos_start
+					))
 		
 		else_block = None
+		#print(self.tokens[self.index].type == TT_ELSE)
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_ELSE:
 			self.next()
 			if self.tokens[self.index].type == TT_START_BLOCK:
 				self.next()
 				body_expression = self.expression()
+				body = [body_expression]
 				if type(body_expression) is ErrorNode:
 					return body_expression
-				elif self.tokens[self.index].type == TT_END_BLOCK:
-					else_block = body_expression
+				while self.index != TT_EOF and self.tokens[self.index].type != TT_END_BLOCK:
+					body_expression = self.expression()
+					if type(body_expression) is ErrorNode:
+						return body_expression
+					body.append(body_expression)
+
+				if self.tokens[self.index].type == TT_END_BLOCK:
+					else_block = body
 					self.next()
 				else:
-					return InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start)
+					return ErrorNode(InvalidSyntaxError("Expected '}'", self.tokens[self.index].pos_start))
 
 		if len(blocks) == 0:
 			return EoFError(f'Unexpected end of file and expecting \'if\'', self.tokens[self.index].pos_start)
@@ -344,6 +395,10 @@ class Parser:
 			if self.index != TT_EOF:
 				if self.tokens[self.index].type == TT_IDENTIFIER:
 					name = self.tokens[self.index]
+					if name.val in T_INBUILT_FUNCTION_NAMES:
+						return ErrorNode(FunctionDefinitionError(
+							f'Cannot redefine in-built function \'{name.val}\'', self.tokens[self.index].pos_start
+						))
 					self.next()
 				else:
 					name = None
@@ -412,12 +467,21 @@ class Parser:
 	def make_function_call(self):
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_IDENTIFIER:
 			name = self.tokens[self.index]
+			isInBuilt = False
+			if name.val in T_INBUILT_FUNCTION_NAMES:
+				isInBuilt = True
+
 			self.next()
 			if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
+				if self.tokens[self.index].pos_end is not None:
+					last_pos = self.tokens[self.index].pos_end
+				else:
+					last_pos = self.tokens[self.index].pos_start
 				self.next()
 				parameters = []
-				if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT]:
-					temp_val = self.value()
+				#last_pos = None
+				if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT, TT_STRING]:
+					temp_val = self.expression()
 					if type(temp_val) in [LoopNode, ConditionalNode, ErrorNode]:
 						return ErrorNode(InvalidSyntaxError(
 							"Expected numerical value or variable or boolean", 
@@ -428,20 +492,40 @@ class Parser:
 
 					while self.index != TT_EOF and self.tokens[self.index].type == TT_COMMA:
 						self.next()
-						if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT]:
-							temp_val = self.value()
-							parameters.append(temp_val)
+						if self.index != TT_EOF and self.tokens[self.index].type in [TT_IDENTIFIER, TT_MINUS, TT_INT, TT_FLOAT, TT_STRING]:
+							if self.tokens[self.index].pos_end is not None:
+								last_pos = self.tokens[self.index].pos_end
+							else:
+								last_pos = self.tokens[self.index].pos_start
+							temp_val = self.expression()
+							#print(type(temp_val).__name__)
+							legal_nodes = [
+								NumNode, NullNode, BooleanNode, 
+								VarNode, UnOpNode, BinOpNode, 
+								StringNode, ArrayNode, 
+								FunctionCallNode, InBuiltFunctionCallNode
+							]
+							if type(temp_val) in legal_nodes:
+								parameters.append(temp_val)
+							else:
+								return ErrorNode(InvalidSyntaxError(
+									"Expected value in function parameter", self.tokens[self.index].pos_start
+								))
 						else:
 							return ErrorNode(InvalidSyntaxError(
 								"Expected numerical value or variable or boolean",
 								self.tokens[self.index].pos_start
 							))
 				#print(self.tokens[self.index], self.index == TT_EOF)
+				#print(parameters)
 				if self.index != TT_EOF and self.tokens[self.index].type == TT_RPARA:
-					return FunctionCallNode(name, parameters)
+					if isInBuilt:
+						return InBuiltFunctionCallNode(name, parameters)
+					else:
+						return FunctionCallNode(name, parameters)
 				else:
 					return ErrorNode(InvalidSyntaxError(
-						"Expected ')'", self.tokens[self.index].pos_start
+						"Expected ')'", last_pos.deepcopy()#self.tokens[self.index].pos_start
 					))
 		else:
 			return ErrorNode(InvalidSyntaxError(
@@ -506,6 +590,24 @@ class Parser:
 		else:
 			return ErrorNode(InvalidSyntaxError("Expected 'array', '['", self.tokens[self.index].pos_start))
 
+	def make_return_statement(self):
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_RETURN:
+			temp_index = self.index
+			self.next()
+			if self.tokens[temp_index].proceeding_char == '\n':
+				valx = NullNode(
+					Token(TT_NULL), val = 'null', 
+					pos_start = self.tokens[temp_index].pos_start, 
+					pos_end = self.tokens[temp_index].pos_end
+				)
+			else:
+				valx = self.expression()
+			return ReturnNode(self.tokens[temp_index], valx)
+		else:
+			return ErrorNode(InvalidSyntaxError(
+				"Expected 'return'", self.tokens[self.index].pos_start
+			))
+
 	def value(self):
 		#print(self.tokens[self.index])
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_LPARA:
@@ -530,6 +632,14 @@ class Parser:
 		
 		if self.index != TT_EOF and self.tokens[self.index].type in [TT_WHILE, TT_FOR]:
 			return self.make_loop()
+		
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_BREAK:
+			new_Node = BreakNode(self.tokens[self.index])
+			self.next()
+			return new_Node
+		
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_RETURN:
+			return self.make_return_statement()
 		
 		if self.index != TT_EOF and self.tokens[self.index].type == TT_NOT:
 			token = self.tokens[self.index]
@@ -576,8 +686,12 @@ class Parser:
 				new_Node = self.get_operation(self.value, [TT_POWER], left = new_Node)
 			return new_Node
 		#print(self.index)
+		if self.index != TT_EOF and self.tokens[self.index].type == TT_NULL:
+			new_Node = NullNode(self.tokens[self.index])
+			self.next()
+			return new_Node
 		error = InvalidSyntaxError(
-			"Not a numerical value", 
+			"Not a valid value", 
 			self.tokens[self.index].pos_start
 		)
 
@@ -596,12 +710,12 @@ class Parser:
 				self.next()
 				right_expression = self.expression()
 				#print(type(right_expression).__name__)
-				if type(right_expression) is not FunctionDefinitionNode:
+				if type(right_expression) is ErrorNode:
+					return right_expression
+				elif type(right_expression) is not FunctionDefinitionNode:
 					return VarAssignNode(left_token, op_token, right_expression)
 				elif type(right_expression) is FunctionDefinitionNode and op_token.type == TT_EQUATION:
 					right_expression.name = left_token
-					return right_expression
-				elif type(right_expression) is ErrorNode:
 					return right_expression
 				else:
 					return ErrorNode(InvalidSyntaxError(
@@ -671,10 +785,6 @@ class Parser:
 		result = self.expression()
 
 		if type(result) is ErrorNode:
-			return result
-		elif self.index != TT_EOF:
-			return ErrorNode(InvalidSyntaxError(
-				"Not an operator",
-				self.tokens[self.index].pos_start
-			))
-		return result
+			#print(self.tokens[self.index])
+			return result, self.index
+		return result, self.index

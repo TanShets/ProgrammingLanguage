@@ -31,7 +31,13 @@ class Context:
     
     def get(self, no_of_parameters, function_name):
         try:
-            return self.functions.get((function_name.val, no_of_parameters)).copy()
+            if self.functions.get((function_name.val, no_of_parameters)) is None:
+                if self.parent_context is not None:
+                    return self.parent_context.get(no_of_parameters, function_name)
+                else:
+                    return None
+            else:
+                return self.functions.get((function_name.val, no_of_parameters)).copy()
         except:
             return None
 

@@ -1,5 +1,5 @@
 TT_EOF = -1
-TT_NULL = 'null'
+TT_NULL = -2
 TT_PLUS = 0
 TT_MINUS = 1
 TT_MUL = 2
@@ -57,6 +57,9 @@ TT_ARRAY_BLOCK_END = 44
 
 TT_ARRAY_KEY_VAL_SEPARATOR = 45
 
+TT_BREAK = 46
+TT_RETURN = 47
+
 T_OPERATOR = {
 	'+': TT_PLUS, '-': TT_MINUS, '*': TT_MUL,
 	'/': TT_DIV, '^': TT_POWER, '=': TT_EQUATION, 
@@ -84,7 +87,19 @@ T_KEYWORDS = {
 	'elseif': TT_ELSEIF, 'elif': TT_ELIF, 'else': TT_ELSE,
 	'for': TT_FOR, 'change': TT_CHANGE, 'while': TT_WHILE,
 	'in': TT_IN, 'to': TT_TO, 'function': TT_FUNCTION,
-	'fn': TT_FUNCTION, 'array': TT_ARRAY
+	'fn': TT_FUNCTION, 'array': TT_ARRAY, 'break': TT_BREAK,
+	'return': TT_RETURN, 'null': TT_NULL
+}
+
+T_INBUILT_FUNCTION_NAMES = [
+	"print", "input", "read", "int", "float", "string"
+]
+
+T_INBUILT_FUNCTIONS = {
+	"print": 'do_print',
+	"input": 'do_input', "read": 'do_input',
+	"int": 'convert_to_int', "float": 'convert_to_float',
+	"string": 'convert_to_string'
 }
 
 T_KEYWORDS_VALS = {
@@ -101,6 +116,7 @@ T_DIGITS = "0123456789"
 T_ALPHABETS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 T_ALPHANUMERICS = T_DIGITS + T_ALPHABETS
 
+import copy
 class Position:
 	def __init__(self, line_no, col_no, index, filename, file_text):
 		self.line_no = line_no
@@ -111,15 +127,22 @@ class Position:
 
 	def move(self):
 		if self.index < len(self.file_text) - 1 and self.index >= 0:
-			self.index += 1
+			#self.index += 1
 			if self.file_text[self.index] == '\n':
 				self.line_no += 1
 				self.col_no = 0
-				self.index += 1
+				#self.index += 1
 			else:
 				self.col_no += 1
+			self.index += 1
 		else:
 			self.index = TT_EOF
+	
+	def __str__(self):
+		return f'{self.filename}: line {self.line_no}, col {self.col_no}'
+	
+	def __repr__(self):
+		return f'{self.filename}: line {self.line_no}, col {self.col_no}'
 
 	def deepcopy(self):
 		return Position(self.line_no, self.col_no, self.index, self.filename, self.file_text)

@@ -91,3 +91,8 @@ class InvalidTypeError(Error):
 				temp_context = temp_context.parent
 		sentence += super().__repr__()
 		return sentence
+
+class InvalidStringError(Error):
+	def __init__(self, body, pos, context = None):
+		self.context = context
+		super().__init__("InvalidStringError", body, pos)

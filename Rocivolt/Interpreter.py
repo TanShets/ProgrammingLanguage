@@ -3,277 +3,21 @@ from symbols import *
 from Lexer import *
 from Error import *
 from Context import *
-
-class Value:
-    operators = {
-        TT_PLUS: 'addition', TT_MINUS: 'subtraction',
-        TT_MUL: 'multiplication', TT_DIV: 'division',
-        TT_POWER: 'exponent', TT_EQUALS: 'equals',
-        TT_GREAT: 'greater', TT_GREAT_EQ: 'greater_e',
-        TT_LESS: 'lesser', TT_LESS_EQ: 'lesser_e',
-        TT_NOT_EQUALS: 'not_equals', TT_AND: 'And',
-        TT_OR: 'Or'
-    }
-
-    decision = {
-        True: 1, False: 0
-    }
-
-    def __str__(self):
-        if self.pos is not None:
-            if self.isBoolean:
-                return f'{T_BACKWARD_BOOLEAN_TRACK[self.num]}'
-            else:
-                return f'{self.num}'
-        else:
-            return f''
-    
-    def __repr__(self):
-        if self.pos is not None:
-            if self.isBoolean:
-                return f'{T_BACKWARD_BOOLEAN_TRACK[self.num]}'
-            else:
-                return f'{self.num}'
-        else:
-            return f''
-
-    def __init__(self, num_token = None, parent_context = None):
-        #print(type(num_token).__name__)
-        self.error = None
-        self.isBoolean = False
-        if num_token is not None:
-            #print("1")
-            if num_token.type == TT_IDENTIFIER:
-                #print("2")
-                if parent_context is not None:
-                    #print("3")
-                    self.num = parent_context.var_table.get(num_token.val).num
-                    #print(type(parent_context.var_table.get(num_token.val)).__name__)
-                else:
-                    self.num = None
-                
-                if self.num is None:
-                    #print("4")
-                    self.num = 0
-                    self.error = NullValueError(
-                                    f'\'{num_token.val}\' has not been initialized', 
-                                    num_token.pos_start, parent_context
-                                )
-            elif num_token.type in [TT_TRUE, TT_FALSE]:
-                self.num = T_KEYWORDS_VALS[num_token.type]
-                self.isBoolean = True
-            else:
-                self.num = num_token.val
-            self.pos = num_token.pos_start
-            if self.pos is not None:
-                self.context = Context(self.pos.filename, self.pos, parent_context)
-            else:
-                self.context = parent_context
-        else:
-            self.num = 0
-            self.pos = None
-            self.context = parent_context
-    
-    def operation(self, val, op):
-        if type(val) is Value:
-            #print(True)
-            method_name = Value.operators.get(op.type, '')
-
-            if method_name != '':
-                method = getattr(self, method_name)
-                #print(False)
-                method(val)
-    
-    def addition(self, val):
-        self.num += val.num
-        self.isBoolean = False
-        self.context = val.context
-    
-    def subtraction(self, val):
-        self.num -= val.num
-        self.isBoolean = False
-        self.context = val.context
-    
-    def multiplication(self, val):
-        self.num *= val.num
-        self.isBoolean = False
-        self.context = val.context
-    
-    def division(self, val):
-        if val.num == 0:
-            #print(val.context)
-            self.error = DivisionByZeroError(val.pos, self.context)
-            self.num = None
-        else:
-            self.num /= val.num
-            self.isBoolean = False
-            self.context = val.context
-    
-    def exponent(self, val):
-        self.num = self.num ** val.num
-        self.isBoolean = False
-        self.context = val.context
-    
-    def greater(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num > val.num]
-    
-    def lesser(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num < val.num]
-    
-    def equals(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num == val.num]
-    
-    def greater_e(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num >= val.num]
-    
-    def And(self, val):
-        self.num = Value.decision[type(val) is Value and (self.num != 0 and val.num != 0)]
-        self.isBoolean = True
-    
-    def Or(self, val):
-        self.num = Value.decision[type(val) is Value and (self.num != 0 or val.num != 0)]
-        self.isBoolean = True
-    
-    def lesser_e(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num <= val.num]
-    
-    def not_equals(self, val):
-        self.isBoolean = True
-        self.num = Value.decision[self.num != val.num]
-
-class StringValue(Value):
-    def __init__(self, string_token = None, parent_context = None):
-        if string_token is not None and string_token.type == TT_STRING:
-            super().__init__(string_token, parent_context)
-        else:
-            self.num = None
-        
-    def operation(self, val, op):
-        if type(val) is StringValue:
-            #print(True)
-            method_name = StringValue.operators.get(op.type, '')
-
-            if method_name != '':
-                method = getattr(self, method_name)
-                #print(False)
-                method(val)
-    
-    def multiplication(self, val):
-        if type(val) is Value:
-            for i in range(val.num):
-                self.num += self.num
-    
-    def addition(self, val):
-        if type(val) is StringValue:
-            super().addition(val)
-        else:
-            self.error = InvalidTypeError('Cannot add non-string to string', val.pos, self.context)
-    
-    def subtraction(self, val):
-        self.error = InvalidTypeError('Cannot subtract from string', val.pos, self.context)
-    
-    def division(self, val):
-        self.error = InvalidTypeError('Cannot divide with string', val.pos, self.context)
-    
-    def exponent(self, val):
-        self.error = InvalidTypeError("Cannot exponentially raise string", val.pos, self.context)
-    
-    def And(self, val):
-        self.num = StringValue.decision[type(val) is StringValue and self.num != "" and val.num != ""]
-        self.isBoolean = True
-
-    def Or(self, val):
-        self.num = Value.decision[type(val) is StringValue and (self.num != "" or val.num != "")]
-        self.isBoolean = True
-        
-class ArrayValue(Value):
-    def __init__(self, array_token = None, parent_context = None, node = None):
-        if array_token is not None and type(array_token) is dict:
-            #print(type(array_token))
-            self.pos = None
-            super().__init__(node.token, parent_context)
-            self.values = array_token
-            self.num = dict()
-            for i in array_token:
-                self.num[i] = array_token[i]
-        else:
-            self.num = None
-            self.pos = None
-    
-    def __str__(self):
-        word = '['
-        keys = list(self.num.keys())
-        for i in range(len(keys)):
-            #print(type(keys[i]).__name__)
-            if type(keys[i]) is StringValue:
-                word += '\''
-                word += keys[i].__str__()
-                word += '\': '
-            
-            if type(self.num[keys[i]]) is StringValue:
-                word += '\''
-                word += self.num[keys[i]].__str__()
-                word += '\''
-            else:
-                word += str(self.num[keys[i]])
-            
-            if i != len(keys) - 1:
-                word += ', '
-        word += ']'
-
-        return word
-        
-    def operation(self, val, op):
-        if type(val) is ArrayValue:
-            #print(True)
-            method_name = ArrayValue.operators.get(op.type, '')
-
-            if method_name != '':
-                method = getattr(self, method_name)
-                #print(False)
-                method(val)
-    
-    def multiplication(self, val):
-        if type(val) is Value:
-            for i in range(val.num):
-                self.num += self.num
-    
-    def addition(self, val):
-        if type(val) is ArrayValue:
-            super().addition(val)
-        else:
-            self.error = InvalidTypeError('Cannot add non-array to array', val.pos, self.context)
-    
-    def subtraction(self, val):
-        self.error = InvalidTypeError('Cannot subtract from array', val.pos, self.context)
-    
-    def division(self, val):
-        self.error = InvalidTypeError('Cannot divide with array', val.pos, self.context)
-    
-    def exponent(self, val):
-        self.error = InvalidTypeError("Cannot exponentially raise array", val.pos, self.context)
-    
-    def And(self, val):
-        self.num = StringValue.decision[type(val) is StringValue and self.num != [] and val.num != []]
-        self.isBoolean = True
-
-    def Or(self, val):
-        self.num = Value.decision[type(val) is StringValue and (self.num != [] or val.num != [])]
-        self.isBoolean = True
-    
-    def __repr__(self):
-        return f'{self.num}'
+from Values import *
+from base_functions import *
+import importlib
 
 class Interpreter:
     def __init__(self, parse_result, parent_context):
         self.num = Value()
         self.parse_result = parse_result
         self.error = None
+
+        self.isFunction = 0
+        self.isLoop = 0
+        self.isReturn = False
+        self.isBreak = False
+
         self.start(parent_context)
     
     def start(self, parent_context):
@@ -296,12 +40,16 @@ class Interpreter:
     def failure(self, node, parent_context):
         return "Failed to capture any node"
     
+    def view_NullNode(self, node, parent_context):
+        return Value(node.token, parent_context)
+    
     def view_NumNode(self, node, parent_context):
         return Value(node.token, parent_context)
         #return "Found NumNode"
     
     def view_ErrorNode(self, node, parent_context):
-        return "Found ErrorNode"
+        self.error = node.token
+        return Value()
     
     def view_BinOpNode(self, node, parent_context):
         #print(type(node.left_token).__name__, type(node.right_token).__name__)
@@ -313,15 +61,24 @@ class Interpreter:
             #print(left)
         else:
             left = self.view(node.left_token, parent_context)
+        #print("left", left)
+        if left.error is not None:
+            self.error = left.error
+            return Value()
         right = self.view(node.right_token, parent_context)
-        #print(type(left.num).__name__, type(right.num).__name__)
+        #print("Right", right)
         #print(left, node.token.type, right)
         #print(left.num, left.error, type(left).__name__)
 
         if left.error is None and right.error is None:
-            #print(type(left).__name__, type(right).__name__)
+            # print(type(left).__name__, type(right).__name__)
+            # print(left, right)
+            # print(node.token)
             left.operation(right, node.token)
+            if left.error is not None:
+                self.error = left.error
         elif right.error is not None:
+            self.error = right.error
             left = right
         #print(left)
         #return f'({left}, "BinOpNode" = {node.token}, {right})'
@@ -357,7 +114,7 @@ class Interpreter:
         if node.token.type == TT_EQUATION:
             parent_context.var_table.setValue(node.var_token.val, value)
         else:
-            variable_value = parent_context.var_table.get(node.var_token.val)
+            variable_value = parent_context.var_table.get(node.var_token.val).copy()
             if variable_value is None:
                 return Value(node.var_token, parent_context)
             elif value is None or value.num is None:
@@ -389,7 +146,11 @@ class Interpreter:
                     x.error = DivisionByZeroError(value.pos, parent_context)
                     return x
                 variable_value.divide(value)
-            parent_context.var_table.setValue(node.var_token.val, variable_value)
+            
+            if variable_value.error is None:
+                parent_context.var_table.setValue(node.var_token.val, variable_value)
+            else:
+                return variable_value
 
         return Value()
     
@@ -397,14 +158,42 @@ class Interpreter:
         return Value(node.token, parent_context)
     
     def view_ConditionalNode(self, node, parent_context):
+        fulfilled = False
         for i in node.blocks:
             condition_value = self.view(i['condition'], parent_context)
+            #print(type(i['condition']).__name__)
+            if condition_value.error is not None:
+                self.error = condition_value.error
+                return Value()
 
             if condition_value.num == 1:
-                return self.view(i['body'], parent_context)
-        
+                #print(i['condition'])
+                fulfilled = True
+                for j in i['body']:
+                    result = self.view(j, parent_context)
+                    if result.error is not None:
+                        self.error = result.error
+                        return Value()
+                    elif self.isFunction > 0 and self.isReturn:
+                        return result
+                    elif self.isLoop > 0 and self.isBreak:
+                        return Value()
+            
+            if fulfilled:
+                return Value()
+        #print("Found you")
         if node.else_block is not None:
-            return self.view(node.else_block, parent_context)
+            for i in node.else_block:
+                result = self.view(i, parent_context)
+                #print(result)
+                if result.error is not None:
+                    self.error = result.error
+                    return Value()
+                elif self.isFunction > 0 and self.isReturn:
+                    return result
+                elif self.isLoop > 0 and self.isBreak:
+                    return Value()
+            return Value()
         else:
             return Value()
     
@@ -452,9 +241,19 @@ class Interpreter:
     def view_LoopNode(self, node, parent_context):
         condition = self.view(node.condition, parent_context)
         values = []
+        self.isLoop += 1
         while condition.num not in [0, 'false']:
             for i in node.block:
+                #print(i)
                 value = self.view(i, parent_context)
+                #print(value)
+                if self.isReturn:
+                    self.isLoop -= 1
+                    return value
+                elif self.isBreak:
+                    self.isLoop -= 1
+                    self.isBreak = False
+                    return values
                 values.append(value)
                 #print(value)
                 if type(value) in [StringValue, Value] and value.error is not None:
@@ -478,9 +277,10 @@ class Interpreter:
             return condition
         
         #print(values)
-        return values
+        return Value()
     
     def view_FunctionDefinitionNode(self, node, parent_context):
+        #print(node.body)
         outcome = parent_context.setFunction(len(node.parameters), node)
         if type(outcome) is FunctionDefinitionError:
             self.error = outcome
@@ -489,27 +289,102 @@ class Interpreter:
     def view_FunctionCallNode(self, node, parent_context):
         # print(node)
         # print(node.parameters)
+        #print(node.parameters)
+        #print(self.isLoop, self.isReturn, self.isBreak)
+        #print(True, node.name)
+        self.isFunction += 1
         function_definition = parent_context.get(len(node.parameters), node.name)
+        function_definition.context.parent_context = parent_context
         if function_definition is None:
+            self.isFunction -= 1
             self.error = FunctionCallError(f'Function: {node.name} not previously defined', node.token.pos_start)
             return Value()
         else:
             for i in range(len(node.parameters)):
                 parameter_value = self.view(node.parameters[i], parent_context)
                 #print("Val:", function_definition.parameters[i], parameter_value)
-                function_definition.setValue(function_definition.parameters[i], parameter_value.num)
+                function_definition.setValue(function_definition.parameters[i], parameter_value)
             
             body = function_definition.body
+            #print(body)
             values = []
             for i in range(len(body)):
                 #print(body[i])
                 temp_val = self.view(body[i], function_definition.context)
-                if temp_val.error is not None:
+                if self.isReturn:
+                    self.isReturn = False
+                    self.isFunction -= 1
+                    return temp_val
+                
+                if type(temp_val) is Value and temp_val.error is not None:
                     self.error = temp_val.error
                     break
+                elif type(temp_val) is list:
+                    stop_now = False
+                    for j in temp_val:
+                        if j.error is not None:
+                            stop_now = True
+                            break
+                    if stop_now:
+                        break
                 values.append(temp_val)
-            return values
+            
+            if not self.isReturn:
+                if len(body) > 0:
+                    pos_x = body[-1].token.pos_start
+                else:
+                    pos_x = node.token.pos_start
+                self.isFunction -= 1
+                return Value(
+                        Token(
+                            TT_NULL, 'null', pos_start = pos_x
+                        )
+                    )
     
+    def view_InBuiltFunctionCallNode(self, node, parent_context):
+        call_name = node.name.val
+        method_name = T_INBUILT_FUNCTIONS.get(call_name, None)
+
+        if method_name is None:
+            self.error = FunctionCallError(f'function-> \'{call_name}\' not found', node.token.pos_start)
+            return Value()
+        else:
+            #BaseFunction.do_print(["dfdd"])
+            #answer_node = method()
+            method = getattr(BaseFunction, method_name)
+            parameter_vals = []
+            for i in node.parameters:
+                temp_val = self.view(i, parent_context)
+                if self.error is not None:
+                    return Value()
+                parameter_vals.append(temp_val)
+            answer = method(parameter_vals, parent_context = parent_context)
+            if type(answer) is not ErrorNode:
+                return answer
+            else:
+                self.error = answer.token
+                return Value()
+
+    def view_ReturnNode(self, node, parent_context):
+        if self.isFunction > 0:
+            #print(type(node.expression).__name__)
+            val = self.view(node.expression, parent_context)
+            #print(val)
+            self.isReturn = True
+            return val
+        else:
+            self.error = InvalidSyntaxError("Unexpected 'return' without overlying function", node.token.pos_start)
+            return Value()
+    
+    def view_BreakNode(self, node, parent_context):
+        if self.isLoop == 0:
+            self.error = InvalidSyntaxError(
+                "Unexpected 'break' without overlying loop", node.token.pos_start
+            )
+        else:
+            self.isBreak = True
+        return Value()
+
     def view_ArrayNode(self, node, parent_context):
         values = {}
         for i in node.keys:
