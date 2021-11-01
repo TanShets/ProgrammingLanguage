@@ -64,11 +64,11 @@ void* str_to_num(char* line, int start, int end, bool isFloat)
 		double* answer = (double*)malloc(sizeof(double));
 		double num = 0;
 		int index = start + 1;
-		while(index < end && line[index] != '.')
+		while(index < end_pos && line[index] != '.')
 			index++;
-		factor = index - 1;
+		factor = index - start - 1;
 		num = 0;
-		for(int i = start; i < end; i++)
+		for(int i = start; i < end_pos; i++)
 		{
 			//printf("%c\n", line[i]);
 			if(line[i] == '.')

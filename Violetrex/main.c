@@ -1,4 +1,4 @@
-#include "Parser.h"
+#include "value.h"
 
 int main()
 {
@@ -20,6 +20,9 @@ int main()
 	int curr_index = 0;
 	Node* node = Parser(tokens, curr_size, &curr_index);
 	printf("\n");
-	printNode(node, 0);
+	// printNode(node, 0);
+
+	Value* val = viewNode(node);
+	printValue(val);
 	return 0;
 }
