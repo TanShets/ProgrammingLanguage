@@ -1,5 +1,5 @@
+#pragma once
 #include "Lexer.h"
-
 #define ERROR_NODE -1
 #define TOKEN 0
 #define NUM_NODE 1
@@ -63,7 +63,12 @@ Node* addsub(Token** tokens, int size, int* curr_index);
 Node* value(Token** tokens, int size, int* curr_index)
 {
 	if(*curr_index == TT_EOF || *curr_index == size)
-		return NULL;
+		return ErrorNode(
+			make_error(
+				EOFError(tokens[size - 1]->line_no, tokens[size - 1]->col_no),
+				tokens[size - 1]->line_no, tokens[size - 1]->col_no
+			)
+		);
 	
 	// print_token(tokens[*curr_index]);
 	// printf(" -v \n");
@@ -76,6 +81,38 @@ Node* value(Token** tokens, int size, int* curr_index)
 				(*curr_index)++;
 				return node;
 			}
+			else if(*curr_index == TT_EOF || *curr_index == size){
+				return ErrorNode(
+					make_error(
+						EOFError(
+							tokens[size - 1]->line_no, 
+							tokens[size - 1]->col_no
+						),
+						tokens[size - 1]->line_no,
+						tokens[size - 1]->col_no
+					)
+				);
+			}
+			else{
+				return ErrorNode(
+					make_error(
+						SyntaxError(
+							"')'", tokens[*curr_index]->line_no,
+							tokens[*curr_index]->col_no
+						), 
+						tokens[*curr_index]->line_no, 
+						tokens[*curr_index]->col_no
+					)
+				);
+			}
+		}
+		else{
+			return ErrorNode(
+				make_error(
+					EOFError(tokens[size - 1]->line_no, tokens[size - 1]->col_no),
+					tokens[size - 1]->line_no, tokens[size - 1]->col_no
+				)
+			);
 		}
 	}
 	else if(
@@ -99,15 +136,31 @@ Node* value(Token** tokens, int size, int* curr_index)
 			}
 		}
 	}
-	return NULL;
+	else{
+		return ErrorNode(
+			make_error(
+				IllegalCharacterError(
+					tokens[*curr_index]->line_no, tokens[*curr_index]->col_no,
+					1, (char*)tokens[*curr_index]->val
+				),
+				tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+			)
+		);
+	}
 }
 
 Node* prodquo(Token** tokens, int size, int* curr_index);
 
 Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation)
 {
-	if(*curr_index == TT_EOF || *curr_index == size)
-		return NULL;
+	if(*curr_index == TT_EOF || *curr_index == size){
+		return ErrorNode(
+			make_error(
+				EOFError(tokens[size - 1]->line_no, tokens[size - 1]->col_no),
+				tokens[size - 1]->line_no, tokens[size - 1]->col_no
+			)
+		);
+	}
 	
 	int ops[100] = {0};
 	switch(type_of_operation)
@@ -138,9 +191,13 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 		}
 	}
 
+	if(left->nodeType == ERROR_NODE)
+		return left;
+
 	while(
 		*curr_index < size && *curr_index != TT_EOF && 
-		ops[T_OPERATOR_DETECTOR(tokens[*curr_index]->type)] == 1
+		ops[T_OPERATOR_DETECTOR(tokens[*curr_index]->type)] == 1 && 
+		left->nodeType != ERROR_NODE
 	){
 		if(*curr_index == TT_EOF || *curr_index == size)
 			return left;
@@ -162,6 +219,9 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 				break;
 			}
 		}
+
+		if(right->nodeType == ERROR_NODE)
+			return right;
 
 		left = BinOpNode((void*)left, left->nodeType, val, (void*)right, right->nodeType);
 	}
@@ -194,7 +254,7 @@ void printNode(Node* node, int isTotal){
 	
 	switch(node->nodeType){
 		case ERROR_NODE:
-			printf("Error\n");
+			print_token(node->val);
 			break;
 		case NUM_NODE:
 			print_token(node->val);

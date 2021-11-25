@@ -1,3 +1,5 @@
+#pragma once
+#define TT_ERROR -2
 #define TT_EOF -1
 #define TT_ADD 0
 #define TT_SUB 1

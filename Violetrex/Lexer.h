@@ -1,3 +1,4 @@
+#pragma once
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -5,6 +6,7 @@
 #include <stdbool.h>
 
 #include "symbols.h"
+#include "errors.h"
 
 #define SIZE 10000
 
@@ -34,6 +36,10 @@ void print_token(Token* token)
 			case TT_FLOAT:{
 				double* temp = (double*)token->val;
 				printf("(%d -> %lf)", token->type, *temp);
+				break;
+			}
+			case TT_ERROR:{
+				printError((Error*)token->val);
 				break;
 			}
 			default:
@@ -112,6 +118,7 @@ Token* make_number(char* line, int* start, int* line_no, int* col_no)
 
 	if(line[*start] < '0' || line[*start] > '9'){
 		token->val = NULL, token->type = TT_EOF;
+		token->line_no = *line_no, token->col_no = *col_no;
 		return token;
 	}
 
@@ -136,6 +143,7 @@ Token* make_number(char* line, int* start, int* line_no, int* col_no)
 	//*start = end;
 	//printf("Flag4\n");
 	token->val = num, token->type = isFloat ? TT_FLOAT : TT_INT;
+	token->line_no = *line_no, token->col_no = *col_no;
 	//printf("Flag4\n");
 	return token;
 }
@@ -143,7 +151,7 @@ Token* make_number(char* line, int* start, int* line_no, int* col_no)
 Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 {
 	int end = *start + 1;
-	char* operator = (char*)malloc(2 * sizeof(char));
+	char* operator = (char*)malloc(3 * sizeof(char));
 	operator[0] = line[*start];
 	int length = 1;
 	if(end < strlen(line) && strchr(T_OPERATOR_KEYS, line[end]) != NULL)
@@ -151,10 +159,18 @@ Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 		operator[1] = line[end];
 		length++;
 	}
-
+	operator[length] = '\0';
 	Token* token = (Token*)malloc(sizeof(Token));
 	token->val = operator, token->type = T_OPERATOR(operator, length);
+	token->line_no = *line_no, token->col_no = *col_no;
 	*start += length;
+	return token;
+}
+
+Token* make_error(Error* error, int line_no, int col_no){
+	Token* token = (Token*)malloc(sizeof(Token));
+	token->val = error, token->type = TT_ERROR;
+	token->line_no = line_no, token->col_no = col_no;
 	return token;
 }
 
@@ -178,12 +194,13 @@ void expand_tokens(Token*** tokens, int* initial_size)
 Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no)
 {
 	Token** tokens = (Token**)calloc(SIZE, sizeof(Token*));
+	Token* temp_token;
+	Error* error;
 	*t_size = SIZE;
 	int length = strlen(line);
 	int i = 0;
 	bool isFloatNum = false;
 	char* temp_char;
-	Token temp_token;
 	Token** temp_ptr;
 	//printf("1\n");
 	while(i != TT_EOF)
@@ -206,6 +223,8 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 
 			tokens[*curr_size]->val = temp_char;
 			tokens[*curr_size]->type = T_PARENTHESIS(line[i]);
+			tokens[*curr_size]->line_no = *line_no;
+			tokens[*curr_size]->col_no = *col_no;
 			move(line_no, col_no, line, &i, length);
 			(*curr_size)++;
 		}
@@ -214,7 +233,14 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			move(line_no, col_no, line, &i, length);
 		}
 		else
-			return NULL;
+		{
+			*curr_size = 1;
+			error = IllegalCharacterError(*line_no, *col_no, 1, line[i]);
+			temp_token = make_error(error, *line_no, *col_no);
+			temp_ptr = (Token**)malloc(sizeof(Token*));
+			*temp_ptr = temp_token;
+			return temp_ptr;
+		}
 
 		if(*curr_size == *t_size){
 			temp_ptr = &tokens[0];
