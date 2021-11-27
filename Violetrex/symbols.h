@@ -1,4 +1,5 @@
 #pragma once
+#define TT_NULL -3
 #define TT_ERROR -2
 #define TT_EOF -1
 #define TT_ADD 0
@@ -25,14 +26,22 @@
 #define TT_PRODUCT_INCREMENT 17
 #define TT_PRODUCT_DECREMENT 18
 
+#define TT_VAR 19
+
 /*
 Hashed values are here
 */
 
 // This is for function
 
+#define STD_VAR_NAME_SIZE_LIMIT 30
+#define ALPHABETS ""
+#define IS_ALPHABET(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+#define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))
+#define IS_ALLOWED_IN_VAR_NAME(c) (IS_ALPHANUMERIC(c) || c == '_')
+
 #define T_OPERATOR_SIZE 5
-char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/\0";
+char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=";
 
 #define T_OPERATOR_REVERSE_SIZE 15
 int T_OPERATOR_REVERSE_KEYS[] = {
@@ -43,6 +52,13 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_INCREMENT, TT_DECREMENT,
 	TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT
 };
+
+#define IN_ASSIGNMENT_OPERATORS(x) ( \
+	( \
+		x == TT_EQ || x == TT_INCREMENT || x == TT_DECREMENT || \
+		x == TT_PRODUCT_INCREMENT || x == TT_PRODUCT_DECREMENT \
+	) \
+)
 
 int T_OPERATOR_REVERSE_DETECTION(int num, int start, int length)
 {

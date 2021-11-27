@@ -8,6 +8,7 @@
 #define EOF_ERROR 1
 #define SYNTAX_ERROR 2
 #define DIVISION_BY_ZERO_ERROR 2
+#define VALUE_NOT_FOUND_ERROR 3
 
 typedef struct ERROR{
     int errType;
@@ -46,11 +47,9 @@ Error* IllegalCharacterError(int line_no, int col_no, int count, ...){
     x = va_arg(list, char*);
     if(count > 1)
         expected = va_arg(list, char*);
-    
     char statement[100] = {"Unexpected character \'"};
     strncat(statement, x, strlen(x));
     char s2[] = {"\' Expected "}, s3 = '\'';
-
     if(count > 1){
         strncat(statement, s2, strlen(s2));
         char temp;
@@ -88,4 +87,11 @@ Error* SyntaxError(char* expected, int line_no, int col_no){
 Error* DivisionByZeroError(int line_no, int col_no){
     char statement[] = {"Division of number by 0 given"};
     return construct_Error(DIVISION_BY_ZERO_ERROR, statement, line_no, col_no);
+}
+
+Error* ValueNotFoundError(char* varname, int line_no, int col_no){
+    char statement[100] = {"Variable '"};
+    strncpy(statement + strlen(statement), varname, strlen(varname));
+    strcat(statement, "' not initialized");
+    return construct_Error(VALUE_NOT_FOUND_ERROR, statement, line_no, col_no);
 }
