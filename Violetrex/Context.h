@@ -55,7 +55,7 @@ void** search_from_context(Context* context, char* key){
     int index = search_index_from_context(context, key);
     if(context->type[index] == -1 && context->parent == NULL)
     {
-        *type = TT_NULL;
+        *type = TT_ERROR;
         answer[0] = NULL;
         answer[1] = type;
     }

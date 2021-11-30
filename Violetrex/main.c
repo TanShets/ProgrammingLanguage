@@ -17,7 +17,7 @@ int main()
 		curr_size = 0;
 		
 		tokens = Lexer(line, &curr_size, &t_size, &line_no, &col_no);
-		//print_token_array(tokens, curr_size);
+		// print_token_array(tokens, curr_size);
 		if((*tokens)->type == TT_ERROR)
 		{
 			print_token(*tokens);
@@ -36,8 +36,11 @@ int main()
 			printNode(node, 0);
 			return 0;
 		}
+		// printNode(node, 0);
 		val = viewNode(node, context);
 		printValue(val);
+		line_no++;
+		col_no = 1;
 	}
 	return 0;
 }

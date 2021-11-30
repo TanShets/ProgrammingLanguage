@@ -9,6 +9,7 @@
 #define SYNTAX_ERROR 2
 #define DIVISION_BY_ZERO_ERROR 2
 #define VALUE_NOT_FOUND_ERROR 3
+#define NULL_OPERATION_ERROR 4
 
 typedef struct ERROR{
     int errType;
@@ -94,4 +95,11 @@ Error* ValueNotFoundError(char* varname, int line_no, int col_no){
     strncpy(statement + strlen(statement), varname, strlen(varname));
     strcat(statement, "' not initialized");
     return construct_Error(VALUE_NOT_FOUND_ERROR, statement, line_no, col_no);
+}
+
+Error* NullOperationError(char* op, int line_no, int col_no){
+    char statement[100] = {"Null value cannot be used by operator '"};
+    strcat(statement, op);
+    strcat(statement, "'");
+    return construct_Error(NULL_OPERATION_ERROR, statement, line_no, col_no);
 }

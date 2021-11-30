@@ -1,4 +1,8 @@
 #pragma once
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #define TT_NULL -3
 #define TT_ERROR -2
 #define TT_EOF -1
@@ -27,7 +31,36 @@
 #define TT_PRODUCT_DECREMENT 18
 
 #define TT_VAR 19
+#define TT_IF 20
+#define TT_ELSEIF 21
+#define TT_ELSE 22
 
+#define TT_BLOCK_OPEN 23
+#define TT_BLOCK_CLOSE 24
+
+#define TT_TRUE 25
+#define TT_FALSE 26
+
+char* keywords_for_Violetrex_syntax[] = {
+								"if", "elseif", "elif", "else",
+								"True", "False", "true", "false",
+								"null", "None", "Null"
+							};
+int keyword_token_for_Violetrex_syntax[] = {
+								TT_IF, TT_ELSEIF, TT_ELSEIF, TT_ELSE,
+								TT_TRUE, TT_FALSE, TT_TRUE, TT_FALSE,
+								TT_NULL, TT_NULL, TT_NULL
+							};
+#define KEYWORDS keywords_for_Violetrex_syntax
+#define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
+#define KEYWORDS_SIZE 11
+
+int keyword_token(char* word){
+	int i = 0;
+	while(i < KEYWORDS_SIZE && strcmp(word, KEYWORDS[i]) != 0)
+		i++;
+	return i < KEYWORDS_SIZE ? KEYWORDS_TOKEN[i] : -1;
+}
 /*
 Hashed values are here
 */
@@ -40,8 +73,8 @@ Hashed values are here
 #define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))
 #define IS_ALLOWED_IN_VAR_NAME(c) (IS_ALPHANUMERIC(c) || c == '_')
 
-#define T_OPERATOR_SIZE 5
-char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=";
+#define T_OPERATOR_SIZE 8
+char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!";
 
 #define T_OPERATOR_REVERSE_SIZE 15
 int T_OPERATOR_REVERSE_KEYS[] = {
@@ -58,6 +91,11 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 		x == TT_EQ || x == TT_INCREMENT || x == TT_DECREMENT || \
 		x == TT_PRODUCT_INCREMENT || x == TT_PRODUCT_DECREMENT \
 	) \
+)
+
+#define IN_BOOLEAN_OPERATORS(x) ( \
+	x == TT_EQUALS || x == TT_NOT_EQUALS || x == TT_LESS_THAN || \
+	x == TT_LESS_THAN_EQ || x == TT_GREATER_THAN || x == TT_GREATER_THAN_EQ \
 )
 
 int T_OPERATOR_REVERSE_DETECTION(int num, int start, int length)
@@ -116,6 +154,10 @@ int T_OPERATOR(char* c, int length)
 			val = TT_GREATER_THAN;
 			added_val = 1;
 			break;
+		case '!':
+			val = 0;
+			added_val = TT_NOT_EQUALS;
+			break;
 		default:
 			return TT_EOF;
 	}
@@ -128,15 +170,71 @@ int T_OPERATOR(char* c, int length)
 	return val;
 }
 
-int T_PARENTHESIS(char c){
+int T_BRACKET(char c){
 	switch(c){
 		case '(':
 			return TT_LPAREN;
 		case ')':
 			return TT_RPAREN;
+		case '{':
+			return TT_BLOCK_OPEN;
+		case '}':
+			return TT_BLOCK_CLOSE;
 		default:
 			return TT_EOF;
 	}
+}
+
+char* T_OPERATOR_REVERSE(int n){
+	char* op = (char*)calloc(5, sizeof(char));
+	switch(n){
+		case TT_ADD:
+			op[0] = '+', op[1] = '\0';
+			break;
+		case TT_SUB:
+			op[0] = '-', op[1] = '\0';
+			break;
+		case TT_MUL:
+			op[0] = '*', op[1] = '\0';
+			break;
+		case TT_DIV:
+			op[0] = '/', op[1] = '\0';
+			break;
+		case TT_EQ:
+			op[0] = '=', op[1] = '\0';
+			break;
+		case TT_INCREMENT:
+			op[0] = '+', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_DECREMENT:
+			op[0] = '-', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_PRODUCT_INCREMENT:
+			op[0] = '*', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_PRODUCT_DECREMENT:
+			op[0] = '/', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_EQUALS:
+			op[0] = '=', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_NOT_EQUALS:
+			op[0] = '!', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_LESS_THAN:
+			op[0] = '<', op[1] = '\0';
+			break;
+		case TT_LESS_THAN_EQ:
+			op[0] = '<', op[1] = '=', op[2] = '\0';
+			break;
+		case TT_GREATER_THAN:
+			op[0] = '>', op[1] = '\0';
+			break;
+		case TT_GREATER_THAN_EQ:
+			op[0] = '>', op[1] = '=', op[2] = '\0';
+			break;
+	}
+	return op;
 }
 
 void move(int* line_no, int* col_no, char* line, int* index, int length)

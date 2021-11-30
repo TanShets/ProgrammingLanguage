@@ -7,9 +7,11 @@
 #define UN_OP_NODE 3
 #define VAR_ASSIGN_NODE 4
 #define VAR_NODE 5
+#define NULL_NODE 6
 
-#define ADD_SUB 0
-#define PROD_QUO 1
+#define BOOLEAN_STATEMENT 0
+#define ADD_SUB 1
+#define PROD_QUO 2
 
 typedef struct NODE{
 	int nodeType;
@@ -24,6 +26,14 @@ Node* construct_Node(Token* val, int nodeType){
 	node->val = val;
 	node->valType = val->type;
 	return node;
+}
+
+Node* NullNode(Token* token)
+{
+	if(token->type == TT_NULL){
+		return construct_Node(token, NULL_NODE);
+	}
+	return NULL;
 }
 
 Node* NumNode(Token* token)
@@ -173,6 +183,11 @@ Node* value(Token** tokens, int size, int* curr_index)
 		(*curr_index)++;
 		return node;
 	}
+	else if(tokens[*curr_index]->type == TT_NULL){
+		node = NullNode(tokens[*curr_index]);
+		(*curr_index)++;
+		return node;
+	}
 	else{
 		return ErrorNode(
 			make_error(
@@ -200,6 +215,7 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 	}
 	
 	int ops[100] = {0};
+	int first_boolean_statement = 0;
 	switch(type_of_operation)
 	{
 		case ADD_SUB:{
@@ -210,6 +226,15 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 		case PROD_QUO:{
 			ops[TT_MUL] = 1;
 			ops[TT_DIV] = 1;
+			break;
+		}
+		case BOOLEAN_STATEMENT:{
+			ops[TT_EQUALS] = 1;
+			ops[TT_NOT_EQUALS] = 1;
+			ops[TT_LESS_THAN] = 1;
+			ops[TT_LESS_THAN_EQ] = 1;
+			ops[TT_GREATER_THAN] = 1;
+			ops[TT_GREATER_THAN_EQ] = 1;
 			break;
 		}
 	}
@@ -226,26 +251,30 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			left = value(tokens, size, curr_index);
 			break;
 		}
+		case BOOLEAN_STATEMENT:{
+			left = addsub(tokens, size, curr_index);
+			break;
+		}
 	}
-
+	// printf("Flag1 %d\n", T_OPERATOR_DETECTOR(tokens[*curr_index]->type));
 	if(left->nodeType == ERROR_NODE)
 		return left;
 
 	while(
 		*curr_index < size && *curr_index != TT_EOF && 
-		ops[T_OPERATOR_DETECTOR(tokens[*curr_index]->type)] == 1 && 
+		T_OPERATOR_DETECTOR(tokens[*curr_index]->type) != -1 && 
+		ops[tokens[*curr_index]->type] == 1 && 
 		left->nodeType != ERROR_NODE
 	){
 		if(*curr_index == TT_EOF || *curr_index == size)
 			return left;
 		
-		type = T_OPERATOR_DETECTOR(tokens[*curr_index]->type); 
+		type = tokens[*curr_index]->type;
 		if(ops[type] == 1)
 			val = tokens[*curr_index];
 		else
 			return left;
 		(*curr_index)++;
-
 		switch(type_of_operation){
 			case ADD_SUB:{
 				right = prodquo(tokens, size, curr_index);
@@ -253,6 +282,19 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			}
 			case PROD_QUO:{
 				right = value(tokens, size, curr_index);
+				break;
+			}
+			case BOOLEAN_STATEMENT:{
+				if(first_boolean_statement == 0){
+					ops[TT_EQUALS] = 0;
+					ops[TT_NOT_EQUALS] = 0;
+					ops[TT_LESS_THAN] = 0;
+					ops[TT_LESS_THAN_EQ] = 0;
+					ops[TT_GREATER_THAN] = 0;
+					ops[TT_GREATER_THAN_EQ] = 0;
+					first_boolean_statement = 1;
+				}
+				right = addsub(tokens, size, curr_index);
 				break;
 			}
 		}
@@ -294,7 +336,8 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 				VarAssignNode(left, val, right, right->nodeType, isVarNode);
 		}
 	}
-	return addsub(tokens, size, curr_index);
+	return operation(tokens, size, curr_index, BOOLEAN_STATEMENT);
+	// return addsub(tokens, size, curr_index);
 }
 
 void printNode(Node* node, int isTotal){
@@ -339,6 +382,7 @@ void printNode(Node* node, int isTotal){
 			print_token(node->val);
 			printf(" => ");
 			printNode(node->right, 1);
+			printf("]");
 			break;
 		}
 		default:

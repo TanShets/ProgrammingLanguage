@@ -45,6 +45,36 @@ void print_token(Token* token)
 				printError((Error*)token->val);
 				break;
 			}
+			case TT_IF:{
+				char* temp = (char*)token->val;
+				printf("(%d -> '%s')", token->type, temp);
+				break;
+			}
+			case TT_ELSEIF:{
+				char* temp = (char*)token->val;
+				printf("(%d -> '%s')", token->type, temp);
+				break;
+			}
+			case TT_ELSE:{
+				char* temp = (char*)token->val;
+				printf("(%d -> '%s')", token->type, temp);
+				break;
+			}
+			case TT_TRUE:{
+				char* temp = (char*)token->val;
+				printf("(%d -> %s)", token->type, temp);
+				break;
+			}
+			case TT_FALSE:{
+				char* temp = (char*)token->val;
+				printf("(%d -> %s)", token->type, temp);
+				break;
+			}
+			case TT_NULL:{
+				char* temp = (char*)token->val;
+				printf("(%d -> %s)", token->type, temp);
+				break;
+			}
 			default:
 				printf("(%d)", token->type);
 		}
@@ -207,10 +237,13 @@ Token* make_variable(char* line, int* start, int* line_no, int* col_no)
 			expand_string(&word, temp_length, &max_length);
 		move(line_no, col_no, line, start, length);
 	}
-
 	Token* token = (Token*)malloc(sizeof(Token));
+	int token_val = keyword_token(word);
+	// printf("Flag 2\n");
 	token->val = word, token->line_no = *line_no;
 	token->type = TT_VAR, token->col_no = *col_no;
+	if(token_val != -1)
+		token->type = token_val;
 	return token;
 }
 
@@ -264,12 +297,12 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			tokens[*curr_size] = make_operator(line, &i, line_no, col_no);
 			(*curr_size)++;
 		}
-		else if(c == '(' || c == ')'){
+		else if(c == '(' || c == ')' || c == '{' || c == '}'){
 			tokens[*curr_size] = (Token*)malloc(sizeof(Token));
 			temp_char = (char*)malloc(sizeof(char));
 			*temp_char = line[i];
 			tokens[*curr_size]->val = temp_char;
-			tokens[*curr_size]->type = T_PARENTHESIS(line[i]);
+			tokens[*curr_size]->type = T_BRACKET(line[i]);
 			tokens[*curr_size]->line_no = *line_no;
 			tokens[*curr_size]->col_no = *col_no;
 			move(line_no, col_no, line, &i, length);
