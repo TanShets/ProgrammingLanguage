@@ -78,7 +78,7 @@ Error* SyntaxError(char* expected, int line_no, int col_no){
     char c = '\'';
     int l = strlen(statement);
     for(int i = 0; i < strlen(expected); i++){
-        statement[l] = c;
+        statement[l] = expected[i];
         l++;
     }
     statement[l] = '\0';

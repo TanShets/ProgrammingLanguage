@@ -1,4 +1,5 @@
 #include "value.h"
+#include "Interpreter.h"
 
 int main()
 {
@@ -37,8 +38,12 @@ int main()
 			return 0;
 		}
 		// printNode(node, 0);
-		val = viewNode(node, context);
-		printValue(val);
+		// val = viewNode(node, context);
+		// printValue(val);
+		// printf("Interpretation has started\n");
+		Interpreter* interpreter = Interpret(node, context);
+		// printf("Success\n");
+		printValues(interpreter);
 		line_no++;
 		col_no = 1;
 	}

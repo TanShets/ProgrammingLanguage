@@ -7,7 +7,13 @@
 	dtype1 == TT_INT && dtype2 == TT_INT ? (int)(*((int*)x)) : \ 
 	dtype1 == TT_FLOAT && dtype2 == TT_INT ? (int)(*((double*)x)) : \ 
 	dtype1 == TT_INT && dtype2 == TT_FLOAT ? (double)(*((int*)x)) : \ 
-	dtype1 == TT_FLOAT && dtype2 == TT_FLOAT ? (double)(*((double*)x)) : 0 \
+	dtype1 == TT_FLOAT && dtype2 == TT_FLOAT ? (double)(*((double*)x)) : \ 
+	dtype1 == TT_TRUE && dtype2 == TT_INT ? (int)1 : \ 
+	dtype1 == TT_TRUE && dtype2 == TT_FLOAT ? (double)1 : \ 
+	dtype1 == TT_FALSE && dtype2 == TT_INT ? (int)0 : \ 
+	dtype1 == TT_FALSE && dtype2 == TT_FLOAT ? (double)0 : \ 
+	dtype1 == TT_TRUE && dtype2 == TT_TRUE ? 1 : \ 
+	dtype1 == TT_FALSE && dtype2 == TT_FALSE ? 0 : 0 \ 
 )
 
 typedef struct VALUE{
@@ -141,6 +147,25 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		new_answer = construct_Value(new_token);
 		memcpy(answer, new_answer, sizeof(Value));
 	}
+	else if(IN_CONDITIONAL_OPERATORS(op_type)){
+		Token* new_token = (Token*)malloc(sizeof(Token));
+		int new_val = 0;
+		int val1 = 0, val2 = 0;
+		val1 = TYPE_CASTER(answer->num, typo, TT_INT);
+		val2 = TYPE_CASTER(changer->num, typp, TT_INT);
+		new_val = op_type == TT_AND ? val1 && val2 : val1 || val2;
+		
+		new_token->type = new_val ? TT_TRUE : TT_FALSE;
+		new_token->val = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+		new_token->line_no = answer->line_no, new_token->col_no = answer->col_no;
+		char *True = "true", *False = "false";
+		if(new_val)
+			strncpy((char*)(new_token->val), True, strlen(True));
+		else
+			strncpy((char*)(new_token->val), False, strlen(False));
+		Value* new_answer = construct_Value(new_token);
+		memcpy(answer, new_answer, sizeof(Value));
+	}
 }
 
 Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
@@ -153,7 +178,7 @@ Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
 				)
 			);
 	}
-	else if(op_type != TT_EQUALS && op_type != TT_NOT_EQUALS){
+	else if(!IN_NULL_OPERATORS(op_type)){
 		if(left->valType == TT_NULL || right->valType == TT_NULL)
 			return construct_Value(
 				make_error(
@@ -177,7 +202,7 @@ Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
 		Value* changer = NULL;
 		answer = left, changer = right;
 		double* new_temp;
-		if(left->valType == TT_INT){
+		if(left->valType == TT_INT && right->valType == TT_FLOAT){
 			answer = (Value*)malloc(sizeof(Value));
 			memcpy(answer, left, sizeof(Value));
 			answer->valType = TT_FLOAT;
@@ -199,6 +224,10 @@ Value* construct_Value(Token* token){
 
 Value* getNumValue(Node* node){
 	return node->nodeType != NUM_NODE ? NULL : construct_Value(node->val);
+}
+
+Value* getBooleanValue(Node* node){
+	return node->nodeType != BOOLEAN_NODE ? NULL : construct_Value(node->val);
 }
 
 Value* getNullValue(Node* node){
@@ -252,6 +281,39 @@ Value* getUnOpValue(Node* node, Context* context){
 					break;
 				}
 			}
+			return val;
+		}
+		else if(node->valType == TT_NOT){
+			Value* val = viewNode((Node*)node->right, context);
+			int value = 0;
+			char *True = "true", *False = "false";
+			switch(val->valType){
+				case TT_INT:{
+					int* temp = (int*)val->num;
+					value = *temp == 0 ? 1 : 0;
+					break;
+				}
+				case TT_FLOAT:{
+					double* temp = (double*)val->num;
+					value = *temp == 0 ? 1 : 0;
+					break;
+				}
+				case TT_TRUE:
+					value = 0;
+					break;
+				case TT_FALSE:
+					value = 1;
+					break;
+				case TT_NULL:
+					value = 1;
+					break;
+			}
+			val->num = calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+			if(value == 0)
+				strncpy((char*)(val->num), False, strlen(False));
+			else
+				strncpy((char*)(val->num), True, strlen(True));
+			val->valType = value == 1 ? TT_TRUE : TT_FALSE;
 			return val;
 		}
 		return NULL;
@@ -322,6 +384,10 @@ Value* viewNode(Node* node, Context* context){
 		}
 		case NUM_NODE:{
 			answer = getNumValue(node);
+			break;
+		}
+		case BOOLEAN_NODE:{
+			answer = getBooleanValue(node);
 			break;
 		}
 		case NULL_NODE:{

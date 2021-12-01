@@ -40,20 +40,25 @@
 
 #define TT_TRUE 25
 #define TT_FALSE 26
+#define TT_AND 27
+#define TT_OR 28
+#define TT_NOT 29
 
 char* keywords_for_Violetrex_syntax[] = {
 								"if", "elseif", "elif", "else",
 								"True", "False", "true", "false",
-								"null", "None", "Null"
+								"null", "None", "Null", "and", "or",
+								"not"
 							};
 int keyword_token_for_Violetrex_syntax[] = {
 								TT_IF, TT_ELSEIF, TT_ELSEIF, TT_ELSE,
 								TT_TRUE, TT_FALSE, TT_TRUE, TT_FALSE,
-								TT_NULL, TT_NULL, TT_NULL
+								TT_NULL, TT_NULL, TT_NULL, TT_AND, TT_OR,
+								TT_NOT
 							};
 #define KEYWORDS keywords_for_Violetrex_syntax
 #define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
-#define KEYWORDS_SIZE 11
+#define KEYWORDS_SIZE 14
 
 int keyword_token(char* word){
 	int i = 0;
@@ -76,14 +81,15 @@ Hashed values are here
 #define T_OPERATOR_SIZE 8
 char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!";
 
-#define T_OPERATOR_REVERSE_SIZE 15
+#define T_OPERATOR_REVERSE_SIZE 18
 int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_ADD, TT_SUB, TT_MUL, TT_DIV,
 	TT_EQ, TT_EQUALS, TT_NOT_EQUALS, 
 	TT_LESS_THAN, TT_LESS_THAN_EQ, 
 	TT_GREATER_THAN, TT_GREATER_THAN_EQ, 
 	TT_INCREMENT, TT_DECREMENT,
-	TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT
+	TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT,
+	TT_AND, TT_OR, TT_NOT
 };
 
 #define IN_ASSIGNMENT_OPERATORS(x) ( \
@@ -97,6 +103,13 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 	x == TT_EQUALS || x == TT_NOT_EQUALS || x == TT_LESS_THAN || \
 	x == TT_LESS_THAN_EQ || x == TT_GREATER_THAN || x == TT_GREATER_THAN_EQ \
 )
+
+#define IN_NULL_OPERATORS(x) ( \ 
+	x == TT_EQUALS || x == TT_NOT_EQUALS || \ 
+	x == TT_AND || x == TT_OR || x == TT_NOT \ 
+)
+
+#define IN_CONDITIONAL_OPERATORS(x) (x == TT_AND || x == TT_OR)
 
 int T_OPERATOR_REVERSE_DETECTION(int num, int start, int length)
 {
