@@ -4,16 +4,16 @@
 
 #define POINT_CASTER(x, dtype) ((dtype == TT_INT) ? (int*)x : (double*)x)
 #define TYPE_CASTER(x, dtype1, dtype2) ( \
-	dtype1 == TT_INT && dtype2 == TT_INT ? (int)(*((int*)x)) : \ 
-	dtype1 == TT_FLOAT && dtype2 == TT_INT ? (int)(*((double*)x)) : \ 
-	dtype1 == TT_INT && dtype2 == TT_FLOAT ? (double)(*((int*)x)) : \ 
-	dtype1 == TT_FLOAT && dtype2 == TT_FLOAT ? (double)(*((double*)x)) : \ 
-	dtype1 == TT_TRUE && dtype2 == TT_INT ? (int)1 : \ 
-	dtype1 == TT_TRUE && dtype2 == TT_FLOAT ? (double)1 : \ 
-	dtype1 == TT_FALSE && dtype2 == TT_INT ? (int)0 : \ 
-	dtype1 == TT_FALSE && dtype2 == TT_FLOAT ? (double)0 : \ 
-	dtype1 == TT_TRUE && dtype2 == TT_TRUE ? 1 : \ 
-	dtype1 == TT_FALSE && dtype2 == TT_FALSE ? 0 : 0 \ 
+	dtype1 == TT_INT && dtype2 == TT_INT ? (int)(*((int*)x)) : \
+	dtype1 == TT_FLOAT && dtype2 == TT_INT ? (int)(*((double*)x)) : \
+	dtype1 == TT_INT && dtype2 == TT_FLOAT ? (double)(*((int*)x)) : \
+	dtype1 == TT_FLOAT && dtype2 == TT_FLOAT ? (double)(*((double*)x)) : \
+	dtype1 == TT_TRUE && dtype2 == TT_INT ? (int)1 : \
+	dtype1 == TT_TRUE && dtype2 == TT_FLOAT ? (double)1 : \
+	dtype1 == TT_FALSE && dtype2 == TT_INT ? (int)0 : \
+	dtype1 == TT_FALSE && dtype2 == TT_FLOAT ? (double)0 : \
+	dtype1 == TT_TRUE && dtype2 == TT_TRUE ? 1 : \
+	dtype1 == TT_FALSE && dtype2 == TT_FALSE ? 0 : 0 \
 )
 
 typedef struct VALUE{

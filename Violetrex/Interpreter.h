@@ -1,6 +1,8 @@
 #pragma once
 #include "value.h"
 
+#define DEFAULT_NO_OF_VALUES 10
+
 typedef struct INTERPRETER{
     Value** values;
     int no_of_values;
@@ -11,6 +13,16 @@ Interpreter* construct_Interpreter(Value** values, int no_of_values){
     interpreter->values = values;
     interpreter->no_of_values = no_of_values;
     return interpreter;
+}
+
+void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
+    int old_no_of_values = *no_of_values;
+    *no_of_values = 2 * new_no_of_values;
+    Value** new_values = (Value**)calloc(*no_of_values, sizeof(Value*));
+    memcpy(new_values, *values, old_no_of_values * sizeof(Value*));
+    Value** temp = *values;
+    *values = new_values;
+    free(temp);
 }
 
 Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context){
@@ -94,20 +106,31 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context)
     }
 }
 
-Interpreter* Interpret(Node* node, Context* context){
-    Value** values;
-    int no_of_values = 1;
-    switch(node->nodeType){
-        case CONDITIONAL_NODE:{
-            values = getConditionalNodeValue(node, &no_of_values, context);
-            break;
+Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context){
+    Value **values, **temp_values;
+    int no_of_values = 1, total_no_of_values = 0;
+    int size = DEFAULT_NO_OF_VALUES;
+    int i = 0;
+    values = (Value**)calloc(size, sizeof(Value*));
+    for(i = 0; i < no_of_nodes; i++){
+        no_of_values = 1;
+        switch(nodes[i]->nodeType){
+            case CONDITIONAL_NODE:{
+                temp_values = getConditionalNodeValue(nodes[i], &no_of_values, context);
+                break;
+            }
+            default:
+                no_of_values = 1;
+                temp_values = (Value**)malloc(sizeof(Value*));
+                *temp_values = viewNode(nodes[i], context);
         }
-        default:
-            no_of_values = 1;
-            values = (Value**)malloc(sizeof(Value*));
-            *values = viewNode(node, context);
+        if(total_no_of_values + no_of_values >= size)
+            expand_Values(&values, &size, total_no_of_values + no_of_values);
+        
+        memmove(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
+        total_no_of_values += no_of_values;
     }
-    return construct_Interpreter(values, no_of_values);
+    return construct_Interpreter(values, total_no_of_values);
 }
 
 void printValues(Interpreter* interpreter){

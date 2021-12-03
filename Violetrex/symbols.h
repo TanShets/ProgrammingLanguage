@@ -104,9 +104,9 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 	x == TT_LESS_THAN_EQ || x == TT_GREATER_THAN || x == TT_GREATER_THAN_EQ \
 )
 
-#define IN_NULL_OPERATORS(x) ( \ 
-	x == TT_EQUALS || x == TT_NOT_EQUALS || \ 
-	x == TT_AND || x == TT_OR || x == TT_NOT \ 
+#define IN_NULL_OPERATORS(x) ( \
+	x == TT_EQUALS || x == TT_NOT_EQUALS || \
+	x == TT_AND || x == TT_OR || x == TT_NOT \
 )
 
 #define IN_CONDITIONAL_OPERATORS(x) (x == TT_AND || x == TT_OR)

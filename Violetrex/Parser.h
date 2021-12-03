@@ -663,8 +663,6 @@ void printNode(Node* node, int isTotal){
 		printf("\nNode was NULL\n");
 		return;
 	}
-
-	printf("Node type %d\n", node->nodeType);
 	
 	switch(node->nodeType){
 		case ERROR_NODE:
