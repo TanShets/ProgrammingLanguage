@@ -36,7 +36,6 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context)
     int* block_lengths = node->block_lengths;
     Value* temp_val;
     Value** values;
-
     int i = 0, flag = 0, j;
     while(i < n){
         temp_val = viewNode(statements[i], context);
@@ -126,7 +125,6 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context){
         }
         if(total_no_of_values + no_of_values >= size)
             expand_Values(&values, &size, total_no_of_values + no_of_values);
-        
         memmove(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
         total_no_of_values += no_of_values;
     }

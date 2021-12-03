@@ -482,7 +482,7 @@ Node* value(Token** tokens, int size, int* curr_index)
 
 			return ConditionalNode(
 				statements, blocks, block_lengths,
-				no_of_blocks, val_token, else_block, else_block_length
+				count, val_token, else_block, else_block_length
 			);
 
 			break;
