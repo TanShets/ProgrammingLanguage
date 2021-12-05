@@ -53,7 +53,7 @@ int main(int argc, char** argv)
         print_token(*tokens);
         return 0;
     }
-    //printf("Flag4 %d\n", t_size);
+    // printf("Flag4 %d\n", t_size);
     // if(tokens != NULL)
     // print_token_array(tokens, curr_size);
     // else
@@ -68,17 +68,17 @@ int main(int argc, char** argv)
         no_of_nodes++;
         if(no_of_nodes == max_no_of_nodes)
             expand_block(&nodes, &max_no_of_nodes);
+        
         if(node->nodeType == ERROR_NODE){
             printNode(node, 0);
             return 0;
         }
-        // printNode(node, 0);
     }
-    // printNode(node, 0);
     // val = viewNode(node, context);
     // printValue(val);
     // printf("Interpretation has started\n");
-    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context);
+    int isLoopNode = 0;
+    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, &isLoopNode);
     // printf("Success\n");
     printValues(interpreter);
     line_no++;

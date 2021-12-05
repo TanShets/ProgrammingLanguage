@@ -200,11 +200,11 @@ Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
 	else{
 		Value* answer = NULL;
 		Value* changer = NULL;
-		answer = left, changer = right;
+		changer = right;
+		answer = (Value*)malloc(sizeof(Value));
+		memcpy(answer, left, sizeof(Value));
 		double* new_temp;
 		if(left->valType == TT_INT && right->valType == TT_FLOAT){
-			answer = (Value*)malloc(sizeof(Value));
-			memcpy(answer, left, sizeof(Value));
 			answer->valType = TT_FLOAT;
 			new_temp = (double*)malloc(sizeof(double));
 			*new_temp = (double)(*((int*)answer->num));
@@ -219,6 +219,38 @@ Value* construct_Value(Token* token){
 	Value* value = (Value*)malloc(sizeof(Value));
 	value->num = token->val;
 	value->valType = token->type;
+	char* temp_val;
+	switch(value->valType){
+		case TT_INT:
+			value->num = (int*)malloc(sizeof(int));
+			*((int*)(value->num)) = *((int*)(token->val));
+			break;
+		case TT_FLOAT:
+			value->num = (double*)malloc(sizeof(double));
+			*((double*)(value->num)) = *((double*)(token->val));
+			break;
+		case TT_ERROR:
+			value->num = (Error*)malloc(sizeof(Error));
+			memcpy(value->num, token->val, sizeof(Error));
+			break;
+		case TT_TRUE:
+			temp_val = (char*)(token->val);
+			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			strncpy((char*)(value->num), temp_val, strlen(temp_val));
+			break;
+		case TT_FALSE:
+			temp_val = (char*)(token->val);
+			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			strncpy((char*)(value->num), temp_val, strlen(temp_val));
+			break;
+		case TT_NULL:
+			temp_val = (char*)(token->val);
+			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			strncpy((char*)(value->num), temp_val, strlen(temp_val));
+			break;
+		default:
+			value->num = token->val;
+	}
 	value->line_no = token->line_no, value->col_no = token->col_no;
 }
 
@@ -322,6 +354,8 @@ Value* getUnOpValue(Node* node, Context* context){
 
 Value* getVarAssignValue(Node* node, Context* context){
 	char* key = (char*)(((Token*)node->left)->val);
+	// printf("%s: ", key);
+	// printNode((Node*)(node->right), 0);
 	Value* val = viewNode((Node*)(node->right), context);
 	Value* val2;
 	Token* token;
@@ -363,6 +397,7 @@ Value* getVarAssignValue(Node* node, Context* context){
 			);
 	}
 	
+	// printValue(val);
 	modify_context(context, key, val->num, val->valType);
 	
 	if(node->isVarNode != 0)
@@ -370,9 +405,13 @@ Value* getVarAssignValue(Node* node, Context* context){
 	token = (Token*)malloc(sizeof(Token));
 	memcpy(token, node->val, sizeof(Token));
 	token->type = TT_NULL;
-	token->val = (int*)malloc(sizeof(int));
-	*((int*)token->val) = 0;
+	token->val = (char*)calloc(5, sizeof(char));
+	strcpy((char*)(token->val), "null");
 	return construct_Value(token);
+}
+
+Value* getBreakValue(Node* node){
+	return node->nodeType == BREAK_NODE ? construct_Value(node->val) : NULL;
 }
 
 Value* viewNode(Node* node, Context* context){
@@ -404,6 +443,10 @@ Value* viewNode(Node* node, Context* context){
 		}
 		case VAR_NODE:{
 			answer = getVarValue(node, context);
+			break;
+		}
+		case BREAK_NODE:{
+			answer = getBreakValue(node);
 			break;
 		}
 		default:{

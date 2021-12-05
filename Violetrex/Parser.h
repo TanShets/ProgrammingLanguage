@@ -10,18 +10,22 @@
 #define NULL_NODE 6
 #define BOOLEAN_NODE 7
 #define CONDITIONAL_NODE 8
+#define TO_NODE 9
+#define LOOP_NODE 10
+#define BREAK_NODE 11
 
 #define CONDITIONAL_STATEMENT 0
 #define BOOLEAN_STATEMENT 1
 #define ADD_SUB 2
 #define PROD_QUO 3
+#define NUM_TO_NUM 4
 
 typedef struct NODE{
 	int nodeType;
 	void *left, *right, *else_block;
 	int* block_lengths;
 	Token* val;
-	int leftType, rightType, valType, isVarNode;
+	int leftType, rightType, valType, isVarNode, else_block_Type;
 }Node;
 
 Node* construct_Node(Token* val, int nodeType){
@@ -30,6 +34,10 @@ Node* construct_Node(Token* val, int nodeType){
 	node->val = val;
 	node->valType = val->type;
 	return node;
+}
+
+Node* BreakNode(Token* val){
+	return construct_Node(val, BREAK_NODE);
 }
 
 Node* ConditionalNode(
@@ -51,6 +59,24 @@ Node* ConditionalNode(
 		return node;
 	}
 	return NULL;
+}
+
+Node* ToNode(
+	Node* left, int leftType, Token* val, Node* right, int rightType
+){
+	Node* node = construct_Node(val, TO_NODE);
+	// a to b is on the left
+	node->left = left, node->leftType = leftType;
+	node->right = right, node->rightType = rightType;
+	// change is on the right, if default, change is NumNode, else a VarAssign node
+	return node;
+}
+
+Node* LoopNode(Token* val, Node* condition, int condition_type, Node** block, int size_of_block){
+	Node* node = construct_Node(val, LOOP_NODE);
+	node->left = condition, node->leftType = condition_type;
+	node->right = block, node->rightType = size_of_block;
+	return node;
 }
 
 Node* NullNode(Token* token)
@@ -105,7 +131,7 @@ Node* ErrorNode(Token* token)
 
 Node* VarAssignNode(Token* left, Token* val, void* right, int rightType, int isVarNode)
 {
-	if(left->type != TT_VAR)
+	if(left->type != TT_VAR && left->type != TT_CHANGE)
 		return ErrorNode(
 			make_error(
 				SyntaxError("Variable name Eg. x", left->line_no, left->col_no),
@@ -129,6 +155,8 @@ Node* VarNode(Token* val)
 			)
 		) : construct_Node(val, VAR_NODE);
 }
+
+void printNode(Node* node, int isTotal);
 
 void expand_arrays(
 	Node*** statements, Node**** blocks, int** block_lengths, int* no_of_blocks
@@ -170,6 +198,136 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode);
 Node* addsub(Token** tokens, int size, int* curr_index);
 
 Node* boolean_statement(Token** tokens, int size, int* curr_index);
+
+Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation);
+
+Node* make_LoopNode(Token** tokens, int size, int* curr_index){
+	int max_block_size = 10, i, block_size = 0;
+	Token* token_val = tokens[*curr_index];
+	Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	Node* condition = NULL;
+	if(tokens[*curr_index]->type == TT_WHILE){
+		(*curr_index)++;
+		condition = Parser(tokens, size, curr_index, 0);
+		if(condition->nodeType == ERROR_NODE)
+			return condition;
+	}
+	else{
+		(*curr_index)++;
+		if(*curr_index == TT_EOF || *curr_index >= size || tokens[*curr_index]->type != TT_VAR)
+			return ErrorNode(
+				make_error(
+					SyntaxError(
+						"variable like 'x'",
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+					),
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				)
+			);
+		
+		Token* var_token = tokens[*curr_index];
+		(*curr_index)++;
+
+		if(*curr_index == TT_EOF || *curr_index >= size || tokens[*curr_index]->type != TT_EQ)
+			return ErrorNode(
+				make_error(
+					SyntaxError(
+						"'='",
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+					),
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				)
+			);
+		Token* eq_token = tokens[*curr_index];
+		(*curr_index)++;
+		Node* set_of_values = operation(tokens, size, curr_index, NUM_TO_NUM);
+		Token *change_eq, *change_var;
+		Node* change_val;
+		Node* change_node = NULL;
+		if(*curr_index != TT_EOF && *curr_index < size && tokens[*curr_index]->type == TT_CHANGE){
+			change_var = tokens[*curr_index];
+			(*curr_index)++;
+			if(*curr_index == TT_EOF || *curr_index >= size || tokens[*curr_index]->type != TT_EQ)
+				return ErrorNode(
+					make_error(
+						SyntaxError(
+							"'='",
+							*curr_index == TT_EOF || *curr_index >= size ? 
+							tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+							*curr_index == TT_EOF || *curr_index >= size ? 
+							tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+						),
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+						*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+					)
+				);
+			
+			change_eq = tokens[*curr_index];
+			(*curr_index)++;
+
+			change_val = Parser(tokens, size, curr_index, 0);
+			change_node = VarAssignNode(change_var, change_eq, change_val, change_val->nodeType, 1);
+		}
+		else{
+			change_var = (Token*)malloc(sizeof(Token));
+			change_var->type = TT_INT;
+			int* new_val_for_change = (int*)malloc(sizeof(int));
+			*new_val_for_change = 1;
+			change_var->val = new_val_for_change;
+			change_node = NumNode(change_var);
+		}
+
+		// condition = VarAssignNode(var_token, eq_token, set_of_values, set_of_values->nodeType, 1);
+		condition = ToNode(set_of_values, set_of_values->nodeType, change_var, change_node, change_node->nodeType);
+		condition = VarAssignNode(var_token, eq_token, condition, condition->nodeType, 1);
+		if(condition->nodeType == ERROR_NODE)
+			return condition;
+	}
+
+	if(*curr_index == TT_EOF || *curr_index >= size || tokens[*curr_index]->type != TT_BLOCK_OPEN)
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"{", 
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				),
+				*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+				*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+			)
+		);
+	
+	(*curr_index)++;
+	while(
+		*curr_index != TT_EOF && *curr_index < size && tokens[*curr_index]->type != TT_BLOCK_CLOSE
+	){
+		block[block_size] = Parser(tokens, size, curr_index, 0);
+		block_size++;
+		if(block_size == max_block_size)
+			expand_block(&block, &max_block_size);
+	}
+	
+	if(*curr_index == TT_EOF || *curr_index >= size || tokens[*curr_index]->type != TT_BLOCK_CLOSE)
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"}", 
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+					*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				),
+				*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+				*curr_index == TT_EOF || *curr_index >= size ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+			)
+		);
+	
+	(*curr_index)++;
+
+	return LoopNode(token_val, condition, condition->nodeType, block, block_size);
+}
 
 Node* value(Token** tokens, int size, int* curr_index)
 {
@@ -487,6 +645,17 @@ Node* value(Token** tokens, int size, int* curr_index)
 
 			break;
 		}
+		case TT_WHILE:
+			return make_LoopNode(tokens, size, curr_index);
+			break;
+		case TT_FOR:
+			return make_LoopNode(tokens, size, curr_index);
+			break;
+		case TT_BREAK:
+			node = BreakNode(tokens[*curr_index]);
+			(*curr_index)++;
+			return node;
+			break;
 		default:{
 			return ErrorNode(
 				make_error(
@@ -542,6 +711,10 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			ops[TT_OR] = 1;
 			break;
 		}
+		case NUM_TO_NUM:{
+			ops[TT_TO] = 1;
+			break;
+		}
 	}
 
 	Node *left = NULL, *right = NULL;
@@ -564,6 +737,10 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			left = boolean_statement(tokens, size, curr_index);
 			break;
 		}
+		case NUM_TO_NUM:{
+			left = Parser(tokens, size, curr_index, 0);
+			break;
+		}
 	}
 	// printf("Flag1 %d\n", T_OPERATOR_DETECTOR(tokens[*curr_index]->type));
 	if(left->nodeType == ERROR_NODE)
@@ -574,10 +751,7 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 		T_OPERATOR_DETECTOR(tokens[*curr_index]->type) != -1 && 
 		ops[tokens[*curr_index]->type] == 1 && 
 		left->nodeType != ERROR_NODE
-	){
-		if(*curr_index == TT_EOF || *curr_index == size)
-			return left;
-		
+	){	
 		type = tokens[*curr_index]->type;
 		if(ops[type] == 1)
 			val = tokens[*curr_index];
@@ -608,6 +782,11 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			}
 			case CONDITIONAL_STATEMENT:{
 				right = boolean_statement(tokens, size, curr_index);
+				break;
+			}
+			case NUM_TO_NUM:{
+				ops[TT_TO] = 0;
+				right = Parser(tokens, size, curr_index, 0);
 				break;
 			}
 		}
