@@ -327,7 +327,7 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
     for(i = 0; i < no_of_parameters; i++){
         key = (char*)(((Token*)parameters[i]->val)->val);
         temp_value = viewNode(param_vals[i], context, isNode);
-        modify_context(function_context, key, temp_value, temp_value->valType);
+        modify_context(function_context, key, temp_value->num, temp_value->valType);
     }
 
     isNode[1]++;

@@ -85,12 +85,16 @@ void alterValues(Value* answer, Value* changer, int op_type){
 			else
 				*((double*)answer->num) *= TYPE_CASTER(changer->num, typp, typo);
 			break;
-		case TT_DIV:
-			if(typo == TT_INT)
-				*((int*)answer->num) /= TYPE_CASTER(changer->num, typp, typo);
-			else
-				*((double*)answer->num) /= TYPE_CASTER(changer->num, typp, typo);
+		case TT_DIV:{
+			if(typo == TT_INT){
+				double* new_val = (double*)malloc(sizeof(double));
+				*new_val = (double)(*((int*)answer->num));
+				answer->num = new_val;
+				answer->valType = TT_FLOAT;
+			}
+			*((double*)answer->num) /= TYPE_CASTER(changer->num, typp, typo);
 			break;
+		}
 	}
 
 	if(IN_BOOLEAN_OPERATORS(op_type)){

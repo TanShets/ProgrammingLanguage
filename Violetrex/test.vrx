@@ -45,6 +45,15 @@ c = fn(q, t){
     return 6
 }
 
+c = fn(x, y, z){
+    x - 5
+    y - 5
+    z - 3
+    return (x + y + z) / 3
+}
+
 x = c(5, 8)
 5 + 5
-x - 6
+x
+y = c(1, 5, 9)
+y
