@@ -13,12 +13,17 @@
 #define TO_NODE 9
 #define LOOP_NODE 10
 #define BREAK_NODE 11
+#define FUNCTION_DEFINITION_NODE 12
+#define RETURN_NODE 13
+#define FUNCTION_CALL_NODE 14
 
 #define CONDITIONAL_STATEMENT 0
 #define BOOLEAN_STATEMENT 1
 #define ADD_SUB 2
 #define PROD_QUO 3
 #define NUM_TO_NUM 4
+
+#define DEFAULT_NO_OF_FUNCTION_PARAMETERS 5
 
 typedef struct NODE{
 	int nodeType;
@@ -33,11 +38,22 @@ Node* construct_Node(Token* val, int nodeType){
 	node->nodeType = nodeType;
 	node->val = val;
 	node->valType = val->type;
+	node->left = NULL, node->right = NULL, node->else_block = NULL;
+	node->block_lengths = NULL, node->leftType = TT_ERROR;
+	node->rightType = TT_ERROR, node->isVarNode = 0;
+	node->else_block_Type = TT_ERROR;
 	return node;
 }
 
 Node* BreakNode(Token* val){
 	return construct_Node(val, BREAK_NODE);
+}
+
+Node* ReturnNode(Token* val, Node* return_val, int return_type){
+	Node* node = construct_Node(val, RETURN_NODE);
+	node->right = return_val;
+	node->rightType = return_type;
+	return node;
 }
 
 Node* ConditionalNode(
@@ -156,6 +172,27 @@ Node* VarNode(Token* val)
 		) : construct_Node(val, VAR_NODE);
 }
 
+Node* FunctionDefinitionNode(
+	Token* val, Node** parameters, int no_of_parameters,
+	Node** block, int no_of_blocks, int isNamed, Token* name
+){
+	if(val->type != TT_FUNCTION)
+		return NULL;
+	Node* node = construct_Node(val, FUNCTION_DEFINITION_NODE);
+	node->left = parameters, node->leftType = no_of_parameters;
+	node->right = block, node->rightType = no_of_blocks;
+	node->else_block_Type = isNamed;
+	node->else_block = name;
+	return node;
+}
+
+Node* FunctionCallNode(Token* val, Node** parameters, int no_of_parameters){
+	Node* node = construct_Node(val, FUNCTION_CALL_NODE);
+	node->left = parameters;
+	node->leftType = no_of_parameters;
+	return node;
+}
+
 void printNode(Node* node, int isTotal);
 
 void expand_arrays(
@@ -192,6 +229,8 @@ void expand_block(Node*** block, int* block_size){
 	*block = new_block;
 	free(old_block);
 }
+
+Node* value(Token** tokens, int size, int* curr_index);
 
 Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode);
 
@@ -329,6 +368,294 @@ Node* make_LoopNode(Token** tokens, int size, int* curr_index){
 	return LoopNode(token_val, condition, condition->nodeType, block, block_size);
 }
 
+Node* make_FunctionDefinitionNode(Token** tokens, int size, int* curr_index){
+	if(tokens[*curr_index]->type != TT_FUNCTION)
+		return NULL;
+	
+	Token* val_token = tokens[*curr_index];
+	(*curr_index)++;
+	if(IS_EOA(*curr_index, size))
+		return ErrorNode(
+			make_error(
+				EOFError(tokens[size - 1]->line_no, tokens[size - 1]->col_no),
+				tokens[size - 1]->line_no, tokens[size - 1]->col_no
+			)
+		);
+	
+	Token* name = NULL;
+	int isAssigned = 0;
+	if(tokens[*curr_index]->type == TT_VAR){
+		name = tokens[*curr_index];
+		isAssigned = 1;
+		(*curr_index)++;
+	}
+
+	Node** parameters;
+	int max_parameter_size = DEFAULT_NO_OF_FUNCTION_PARAMETERS;
+	int no_of_parameters = 0;
+	int temp_type, isFinished = 0;
+
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_LPAREN){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"(", 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+	parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_RPAREN){
+		parameters[no_of_parameters] = value(tokens, size, curr_index);
+		no_of_parameters++;
+		if(no_of_parameters == max_parameter_size)
+			expand_block(&parameters, &max_parameter_size);
+		
+		if(IS_EOA(*curr_index, size))
+			break;
+		
+		temp_type = tokens[*curr_index]->type;
+		if(temp_type == TT_COMMA)
+			(*curr_index)++;
+		else
+			isFinished = 1;
+	}
+
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_RPAREN){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					")", IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+	else if(tokens[*curr_index]->type == TT_RPAREN && !isFinished){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"Another parameter", 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_BLOCK_OPEN){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"{", IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+	(*curr_index)++;
+
+	int no_of_blocks = 0, max_block_size = 5;
+	Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_CLOSE){
+		block[no_of_blocks] = Parser(tokens, size, curr_index, 0);
+		if(block[no_of_blocks]->nodeType == ERROR_NODE)
+			return block[no_of_blocks];
+		no_of_blocks++;
+		if(no_of_blocks == max_block_size)
+			expand_block(&block, &max_block_size);
+	}
+
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_BLOCK_CLOSE){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"}", IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+
+	return FunctionDefinitionNode(
+			val_token, parameters, no_of_parameters, block, 
+			no_of_blocks, isAssigned, name
+		);
+}
+
+Node* make_ReturnNode(Token** tokens, int size, int* curr_index){
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_RETURN){
+		return ErrorNode(
+			make_error(
+				EOFError(
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	Token* val_token = tokens[*curr_index];
+	(*curr_index)++;
+	Node* val = NULL;
+	if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_CLOSE)
+		val = Parser(tokens, size, curr_index, 1);
+	else{
+		Token* token = (Token*)malloc(sizeof(Token));
+		token->type = TT_NULL;
+		char* word = {"null"};
+		token->val = word;
+		token->line_no = IS_EOA(*curr_index, size) ? 
+			tokens[size - 1]->line_no : tokens[*curr_index]->line_no;
+		token->col_no = IS_EOA(*curr_index, size) ? 
+			tokens[size - 1]->col_no : tokens[*curr_index]->col_no;
+		
+		val = NullNode(token);
+	}
+	return ReturnNode(val_token, val, val->nodeType);
+}
+
+Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index){
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_VAR){
+		return ErrorNode(
+			make_error(
+				EOFError(
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+	
+	Token* val_token = tokens[*curr_index];
+	(*curr_index)++;
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_LPAREN){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"(",
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+	int max_parameter_size = DEFAULT_NO_OF_FUNCTION_PARAMETERS;
+	int no_of_parameters = 0;
+	Node** parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	int temp_type, isFinished = 0;
+
+	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_RPAREN){
+		parameters[no_of_parameters] = value(tokens, size, curr_index);
+		no_of_parameters++;
+		if(no_of_parameters == max_parameter_size)
+			expand_block(&parameters, &max_parameter_size);
+		
+		if(IS_EOA(*curr_index, size))
+			break;
+		
+		temp_type = tokens[*curr_index]->type;
+		if(temp_type == TT_COMMA)
+			(*curr_index)++;
+		else
+			isFinished = 1;
+	}
+
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_RPAREN){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					")", IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+	else if(tokens[*curr_index]->type == TT_RPAREN && !isFinished){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"Another parameter", 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+					tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+					tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : 
+				tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : 
+				tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+	return FunctionCallNode(val_token, parameters, no_of_parameters);
+}
+
 Node* value(Token** tokens, int size, int* curr_index)
 {
 	if(*curr_index == TT_EOF || *curr_index == size)
@@ -414,7 +741,12 @@ Node* value(Token** tokens, int size, int* curr_index)
 		case TT_VAR:{
 			node = VarNode(tokens[*curr_index]);
 			(*curr_index)++;
-			return node;
+			if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_LPAREN){
+				(*curr_index)--;
+				return make_FunctionCallNode(tokens, size, curr_index);
+			}
+			else
+				return node;
 			break;
 		}
 		case TT_NULL:{
@@ -656,6 +988,14 @@ Node* value(Token** tokens, int size, int* curr_index)
 			(*curr_index)++;
 			return node;
 			break;
+		case TT_FUNCTION:{
+			return make_FunctionDefinitionNode(tokens, size, curr_index);
+			break;
+		}
+		case TT_RETURN:{
+			return make_ReturnNode(tokens, size, curr_index);
+			break;
+		}
 		default:{
 			return ErrorNode(
 				make_error(
@@ -827,8 +1167,13 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 			(*curr_index)++;
 			Token* val = tokens[*curr_index];
 			(*curr_index)++;
-			Node* right = addsub(tokens, size, curr_index);
+			Node* right = Parser(tokens, size, curr_index, isVarNode);
+			if(right->nodeType == FUNCTION_DEFINITION_NODE){
+				right->else_block_Type = 1;
+				right->else_block = left;
+			}
 			return right->nodeType == ERROR_NODE ? right : 
+				right->nodeType == FUNCTION_DEFINITION_NODE ? right : 
 				VarAssignNode(left, val, right, right->nodeType, isVarNode);
 		}
 	}

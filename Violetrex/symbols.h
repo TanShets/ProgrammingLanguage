@@ -50,23 +50,27 @@
 #define TT_BREAK 33
 #define TT_CHANGE 34
 
+#define TT_FUNCTION 35
+#define TT_COMMA 36
+#define TT_RETURN 37
+
 char* keywords_for_Violetrex_syntax[] = {
 								"if", "elseif", "elif", "else",
 								"True", "False", "true", "false",
 								"null", "None", "Null", "and", "or",
 								"not", "while", "for", "to", "break",
-								"change"
+								"change", "function", "fn", "return"
 							};
 int keyword_token_for_Violetrex_syntax[] = {
 								TT_IF, TT_ELSEIF, TT_ELSEIF, TT_ELSE,
 								TT_TRUE, TT_FALSE, TT_TRUE, TT_FALSE,
 								TT_NULL, TT_NULL, TT_NULL, TT_AND, TT_OR,
 								TT_NOT, TT_WHILE, TT_FOR, TT_TO, TT_BREAK,
-								TT_CHANGE
+								TT_CHANGE, TT_FUNCTION, TT_FUNCTION, TT_RETURN
 							};
 #define KEYWORDS keywords_for_Violetrex_syntax
 #define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
-#define KEYWORDS_SIZE 19
+#define KEYWORDS_SIZE 22
 
 int keyword_token(char* word){
 	int i = 0;
@@ -273,3 +277,44 @@ void move(int* line_no, int* col_no, char* line, int* index, int length)
 	(*col_no)++;
 	(*index)++;
 }
+
+#define IS_EOA(index, size) (index == TT_EOF || index >= size)
+// EOA = End of Array
+
+void expand_file_data(char** line, int* filesize){
+    int old_filesize = *filesize;
+    *filesize *= 2;
+    char* new_line = (char*)calloc(*filesize, sizeof(char));
+    strncpy(new_line, *line, old_filesize);
+    char* temp = *line;
+    *line = new_line;
+    free(temp);
+}
+
+void str_reverse(char* word){
+	int n = strlen(word);
+	char temp;
+	for(int i = 0; i < n / 2; i++){
+		temp = word[i];
+		word[i] = word[n - i - 1];
+		word[n - i - 1] = temp;
+	}
+}
+
+char* num_to_str(int num){
+	char* answer = (char*)calloc(10, sizeof(char));
+	int curr_size = 0, max_size = 10;
+	int temp_num = num, temp;
+	while(temp_num > 0){
+		temp = temp_num % 10;
+		answer[curr_size] = (char)('0' + temp);
+		curr_size++;
+		if(curr_size == max_size)
+			expand_file_data(&answer, &max_size);
+		temp_num /= 10;
+	}
+	str_reverse(answer);
+	return answer;
+}
+
+#define INT_TO_STR(x) num_to_str(x)

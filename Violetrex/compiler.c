@@ -3,16 +3,6 @@
 
 #define DEFAULT_NO_OF_NODES 5
 
-void expand_file_data(char** line, int* filesize){
-    int old_filesize = *filesize;
-    *filesize *= 2;
-    char* new_line = (char*)calloc(*filesize, sizeof(char));
-    strncpy(new_line, *line, old_filesize);
-    char* temp = *line;
-    *line = new_line;
-    free(temp);
-}
-
 int main(int argc, char** argv)
 {
     char FILE_LINES[SIZE];
@@ -77,8 +67,9 @@ int main(int argc, char** argv)
     // val = viewNode(node, context);
     // printValue(val);
     // printf("Interpretation has started\n");
-    int isLoopNode = 0;
-    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, &isLoopNode);
+    int isNode[] = {0, 0, 0};
+    //Index 0 is for loop node and index 1 is for function node
+    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode);
     // printf("Success\n");
     printValues(interpreter);
     line_no++;

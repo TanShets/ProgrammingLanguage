@@ -324,6 +324,17 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 		else if(strchr(T_SPACING_KEYS, c) != NULL && c != '\0'){
 			move(line_no, col_no, line, &i, length);
 		}
+		else if(c == ','){
+			tokens[*curr_size] = (Token*)malloc(sizeof(Token));
+			temp_char = (char*)malloc(sizeof(char));
+			*temp_char = line[i];
+			tokens[*curr_size]->val = temp_char;
+			tokens[*curr_size]->type = TT_COMMA;
+			tokens[*curr_size]->line_no = *line_no;
+			tokens[*curr_size]->col_no = *col_no;
+			move(line_no, col_no, line, &i, length);
+			(*curr_size)++;
+		}
 		else{
 			if(curr_size != NULL){
 				curr_size = (int*)malloc(sizeof(int));

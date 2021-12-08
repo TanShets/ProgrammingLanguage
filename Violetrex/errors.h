@@ -7,9 +7,10 @@
 #define ILLEGAL_CHAR_ERROR 0
 #define EOF_ERROR 1
 #define SYNTAX_ERROR 2
-#define DIVISION_BY_ZERO_ERROR 2
-#define VALUE_NOT_FOUND_ERROR 3
-#define NULL_OPERATION_ERROR 4
+#define DIVISION_BY_ZERO_ERROR 3
+#define VALUE_NOT_FOUND_ERROR 4
+#define NULL_OPERATION_ERROR 5
+#define FUNCTION_NOT_FOUND_ERROR 6
 
 typedef struct ERROR{
     int errType;
@@ -32,6 +33,31 @@ void printError(Error* error){
     switch(error->errType){
         case ILLEGAL_CHAR_ERROR:{
             printf("\nIllegalCharacterError: ");
+            break;
+        }
+        case EOF_ERROR:{
+            printf("\nEOFError: ");
+            break;
+        }
+        case SYNTAX_ERROR:{
+            printf("\nSyntaxError: ");
+            break;
+        }
+        case DIVISION_BY_ZERO_ERROR:{
+            printf("\nDivisionByZeroError: ");
+            break;
+        }
+        case VALUE_NOT_FOUND_ERROR:{
+            printf("\nValueNotFoundError: ");
+            break;
+        }
+        case NULL_OPERATION_ERROR:{
+            printf("\nNullOperationError: ");
+            break;
+        }
+        case FUNCTION_NOT_FOUND_ERROR:{
+            printf("\nFunctionNotFoundError: ");
+            break;
         }
         default:{
             printf("\nError: ");
@@ -95,6 +121,15 @@ Error* ValueNotFoundError(char* varname, int line_no, int col_no){
     strncpy(statement + strlen(statement), varname, strlen(varname));
     strcat(statement, "' not initialized");
     return construct_Error(VALUE_NOT_FOUND_ERROR, statement, line_no, col_no);
+}
+
+Error* FunctionNotFoundError(char* varname, char* no_of_params, int line_no, int col_no){
+    char statement[100] = {"Function '"};
+    strncpy(statement + strlen(statement), varname, strlen(varname));
+    strcat(statement, "' with ");
+    strcat(statement, no_of_params);
+    strcat(statement, " parameters not defined");
+    return construct_Error(FUNCTION_NOT_FOUND_ERROR, statement, line_no, col_no);
 }
 
 Error* NullOperationError(char* op, int line_no, int col_no){

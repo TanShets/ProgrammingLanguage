@@ -1,12 +1,13 @@
 #include "Parser.h"
 #include "errors.h"
 #pragma once
-#define CONTEXT_SIZE 100000000
+#define CONTEXT_SIZE 10000
 #define HASH_CONTEXT(num, i, size) ((i*i + 3*i + num % size) % size)
 
 typedef struct CONTEXT{
     struct CONTEXT *parent;
     int context_size;
+    int content_size;
     void** values;
     char** keys;
     int* type;
@@ -15,12 +16,33 @@ typedef struct CONTEXT{
 Context* construct_Context(){
     Context* context = (Context*)malloc(sizeof(Context));
     context->context_size = CONTEXT_SIZE;
+    context->content_size = 0;
     context->parent = NULL;
     context->values = (void**)calloc(context->context_size, sizeof(void*));
     context->keys = (char**)calloc(context->context_size, sizeof(char*));
     context->type = (int*)calloc(context->context_size, sizeof(int));
     memset(context->type, -1, context->context_size * sizeof(int));
     return context;
+}
+
+void add_to_context(Context* context, char* key, void* value, int type);
+
+void expand_context(Context* context){
+    void** old_values = context->values;
+    char** old_keys = context->keys;
+    int* old_type = context->type;
+    int old_context_size = context->context_size;
+    context->context_size *= 2;
+    context->values = (void**)calloc(context->context_size, sizeof(void*));
+    context->keys = (char**)calloc(context->context_size, sizeof(char*));
+    context->type = (int*)calloc(context->context_size, sizeof(int));
+    context->content_size = 0;
+    memset(context->type, -1, context->context_size * sizeof(int));
+
+    for(int i = 0; i < old_context_size; i++){
+        if(old_type[i] != -1)
+            add_to_context(context, old_keys[i], old_values[i], old_type[i]);
+    }
 }
 
 void add_to_context(Context* context, char* key, void* value, int type){
@@ -32,6 +54,9 @@ void add_to_context(Context* context, char* key, void* value, int type){
     context->keys[index] = key;
     context->values[index] = value;
     context->type[index] = type;
+    context->content_size++;
+    if(context->content_size >= context->context_size / 2)
+        expand_context(context);
 }
 
 int search_index_from_context(Context* context, char* key){

@@ -53,7 +53,7 @@ void printValue(Value* value){
 	printf("\n");
 }
 
-Value* viewNode(Node* node, Context* context);
+Value* viewNode(Node* node, Context* context, int* isNode);
 Value* construct_Value(Token* token);
 
 void alterValues(Value* answer, Value* changer, int op_type){
@@ -287,22 +287,22 @@ Value* getVarValue(Node* node, Context* context){
 		);
 }
 
-Value* getBinOpValue(Node* node, Context* context){
+Value* getBinOpValue(Node* node, Context* context, int* isNode){
 	if(node->nodeType != BIN_OP_NODE)
 		return NULL;
 	else{
-		Value* leftValue = viewNode((Node*)node->left, context);
-		Value* rightValue = viewNode((Node*)node->right, context);
+		Value* leftValue = viewNode((Node*)node->left, context, isNode);
+		Value* rightValue = viewNode((Node*)node->right, context, isNode);
 		return operateValues(leftValue, rightValue, node->valType, 0);
 	}
 }
 
-Value* getUnOpValue(Node* node, Context* context){
+Value* getUnOpValue(Node* node, Context* context, int* isNode){
 	if(node->nodeType != UN_OP_NODE)
 		return NULL;
 	else{
 		if(node->valType == TT_SUB){
-			Value* val = viewNode((Node*)node->right, context);
+			Value* val = viewNode((Node*)node->right, context, isNode);
 			switch(val->valType){
 				case TT_INT:{
 					*((int*)(val->num)) *= -1;
@@ -316,7 +316,7 @@ Value* getUnOpValue(Node* node, Context* context){
 			return val;
 		}
 		else if(node->valType == TT_NOT){
-			Value* val = viewNode((Node*)node->right, context);
+			Value* val = viewNode((Node*)node->right, context, isNode);
 			int value = 0;
 			char *True = "true", *False = "false";
 			switch(val->valType){
@@ -352,57 +352,35 @@ Value* getUnOpValue(Node* node, Context* context){
 	}
 }
 
-Value* getVarAssignValue(Node* node, Context* context){
-	char* key = (char*)(((Token*)node->left)->val);
-	// printf("%s: ", key);
-	// printNode((Node*)(node->right), 0);
-	Value* val = viewNode((Node*)(node->right), context);
-	Value* val2;
-	Token* token;
-	void** answer = NULL;
-	int line_no, col_no;
-	if(node->val->type != TT_EQ){
-		line_no = node->val->line_no;
-		col_no = node->val->col_no;
-		answer = search_from_context(context, key);
-		if(answer[1] != NULL && *((int*)answer[1]) != TT_ERROR){
-			token = (Token*)malloc(sizeof(Token));
-			token->type = *((int*)answer[1]);
-			token->val = answer[0];
-			token->line_no = node->val->line_no, token->col_no = node->val->col_no;
-			val2 = construct_Value(token);
-			switch(node->val->type){
-				case TT_INCREMENT:
-					val = operateValues(val2, val, TT_ADD, 1);
-					break;
-				case TT_DECREMENT:
-					val = operateValues(val2, val, TT_SUB, 1);
-					break;
-				case TT_PRODUCT_INCREMENT:
-					val = operateValues(val2, val, TT_MUL, 1);
-					break;
-				case TT_PRODUCT_DECREMENT:
-					val = operateValues(val2, val, TT_DIV, 1);
-					break;
-			}
+Value* getVarAssignValue(Node* node, Context* context, int* isNode);
 
-			if(val->valType == TT_ERROR)
-				return val;
-		}
-		else
-			return construct_Value(
-				make_error(
-					ValueNotFoundError(key, line_no, col_no), line_no, col_no
-				)
-			);
-	}
-	
-	// printValue(val);
-	modify_context(context, key, val->num, val->valType);
-	
-	if(node->isVarNode != 0)
-		return val;
-	token = (Token*)malloc(sizeof(Token));
+Value* getBreakValue(Node* node){
+	return node->nodeType == BREAK_NODE ? construct_Value(node->val) : NULL;
+}
+
+Value* getFunctionDefinitionValue(Node* node, Context* context){
+    if(node->nodeType != FUNCTION_DEFINITION_NODE)
+        return NULL;
+    else if(node->else_block_Type == 0){
+        return construct_Value(
+            make_error(
+                SyntaxError(
+                    "function name or variable assigned to function",
+                    node->val->line_no, node->val->col_no
+                ),
+                node->val->line_no, node->val->col_no
+            )
+        );
+    }
+
+    char* name = (char*)(((Token*)node->else_block)->val);
+	char* num_params = INT_TO_STR(node->leftType);
+	char* temp_name = (char*)calloc(strlen(name) + strlen(num_params) + 5, sizeof(char));
+	strncpy(temp_name, name, strlen(name));
+	strcat(temp_name, num_params);
+	name = temp_name;
+	modify_context(context, name, node, FUNCTION_DEFINITION_NODE);
+	Token* token = (Token*)malloc(sizeof(Token));
 	memcpy(token, node->val, sizeof(Token));
 	token->type = TT_NULL;
 	token->val = (char*)calloc(5, sizeof(char));
@@ -410,48 +388,44 @@ Value* getVarAssignValue(Node* node, Context* context){
 	return construct_Value(token);
 }
 
-Value* getBreakValue(Node* node){
-	return node->nodeType == BREAK_NODE ? construct_Value(node->val) : NULL;
-}
-
-Value* viewNode(Node* node, Context* context){
-	Value* answer;
-	switch(node->nodeType){
-		case VAR_ASSIGN_NODE:{
-			answer = getVarAssignValue(node, context);
-			break;
-		}
-		case NUM_NODE:{
-			answer = getNumValue(node);
-			break;
-		}
-		case BOOLEAN_NODE:{
-			answer = getBooleanValue(node);
-			break;
-		}
-		case NULL_NODE:{
-			answer = getNullValue(node);
-			break;
-		}
-		case BIN_OP_NODE:{
-			answer = getBinOpValue(node, context);
-			break;
-		}
-		case UN_OP_NODE:{
-			answer = getUnOpValue(node, context);
-			break;
-		}
-		case VAR_NODE:{
-			answer = getVarValue(node, context);
-			break;
-		}
-		case BREAK_NODE:{
-			answer = getBreakValue(node);
-			break;
-		}
-		default:{
-			answer = NULL;
-		}
-	}
-	return answer;
-}
+// Value* viewNode(Node* node, Context* context, int* isNode){
+// 	Value* answer;
+// 	switch(node->nodeType){
+// 		case NUM_NODE:{
+// 			answer = getNumValue(node);
+// 			break;
+// 		}
+// 		case BOOLEAN_NODE:{
+// 			answer = getBooleanValue(node);
+// 			break;
+// 		}
+// 		case NULL_NODE:{
+// 			answer = getNullValue(node);
+// 			break;
+// 		}
+// 		case BIN_OP_NODE:{
+// 			answer = getBinOpValue(node, context);
+// 			break;
+// 		}
+// 		case UN_OP_NODE:{
+// 			answer = getUnOpValue(node, context);
+// 			break;
+// 		}
+// 		case VAR_NODE:{
+// 			answer = getVarValue(node, context);
+// 			break;
+// 		}
+// 		case BREAK_NODE:{
+// 			answer = getBreakValue(node);
+// 			break;
+// 		}
+// 		case FUNCTION_DEFINITION_NODE:{
+// 			answer = getFunctionDefinitionValue(node, context);
+// 			break;
+// 		}
+// 		default:{
+// 			answer = NULL;
+// 		}
+// 	}
+// 	return answer;
+// }

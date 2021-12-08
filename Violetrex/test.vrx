@@ -27,3 +27,24 @@ while i > 1
         }
     }
 }
+
+function nameo(a, b){
+    5 + 5
+    a + b
+}
+
+c = fn(q, t){
+    q - t
+    4 - 4
+    if q > t{
+        55
+    }
+    else{
+        57
+    }
+    return 6
+}
+
+x = c(5, 8)
+5 + 5
+x - 6
