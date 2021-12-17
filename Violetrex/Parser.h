@@ -16,6 +16,7 @@
 #define FUNCTION_DEFINITION_NODE 12
 #define RETURN_NODE 13
 #define FUNCTION_CALL_NODE 14
+#define STRING_NODE 15
 
 #define CONDITIONAL_STATEMENT 0
 #define BOOLEAN_STATEMENT 1
@@ -115,6 +116,14 @@ Node* NumNode(Token* token)
 {
 	if(token->type == TT_INT || token->type == TT_FLOAT){
 		return construct_Node(token, NUM_NODE);
+	}
+	return NULL;
+}
+
+Node* StringNode(Token* token)
+{
+	if(token->type == TT_STRING){
+		return construct_Node(token, STRING_NODE);
 	}
 	return NULL;
 }
@@ -996,6 +1005,11 @@ Node* value(Token** tokens, int size, int* curr_index)
 			return make_ReturnNode(tokens, size, curr_index);
 			break;
 		}
+		case TT_STRING:{
+			node = StringNode(tokens[*curr_index]);
+			(*curr_index)++;
+			return node;
+		}
 		default:{
 			return ErrorNode(
 				make_error(
@@ -1224,6 +1238,10 @@ void printNode(Node* node, int isTotal){
 			printf(" => ");
 			printNode(node->right, 1);
 			printf("]");
+			break;
+		}
+		case STRING_NODE:{
+			printf("(%d, \"%s\")", node->nodeType, (char*)(node->val->val));
 			break;
 		}
 		default:{

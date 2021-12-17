@@ -63,10 +63,10 @@ int main(int argc, char** argv)
             printNode(node, 0);
             return 0;
         }
+        // printNode(node, 0);
     }
     // val = viewNode(node, context);
     // printValue(val);
-    // printf("Interpretation has started\n");
     int isNode[] = {0, 0, 0};
     //Index 0 is for loop node and index 1 is for function node
     Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode);

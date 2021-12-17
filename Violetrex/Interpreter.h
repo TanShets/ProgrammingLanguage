@@ -155,6 +155,10 @@ Value* viewNode(Node* node, Context* context, int* isNode){
 			answer = getFunctionDefinitionValue(node, context);
 			break;
 		}
+        case STRING_NODE:{
+            answer = getStringValue(node);
+            break;
+        }
 		default:{
 			answer = NULL;
 		}
@@ -487,11 +491,13 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
                 *temp_values = getFunctionCallValue(nodes[i], context, isNode);
                 break;
             }
-            default:
+            default:{
                 no_of_values = 1;
                 temp_values = (Value**)malloc(sizeof(Value*));
                 *temp_values = viewNode(nodes[i], context, isNode);
+            }
         }
+
         if(no_of_values == 1 && (*temp_values)->valType == TT_ERROR)
             isNode[2]++;
 

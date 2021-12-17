@@ -13,6 +13,7 @@
 typedef struct TOKEN{
 	void* val;
 	int type;
+	int isSingle;
 	int line_no, col_no;
 } Token;
 
@@ -71,6 +72,11 @@ void print_token(Token* token)
 				break;
 			}
 			case TT_NULL:{
+				char* temp = (char*)token->val;
+				printf("(%d -> %s)", token->type, temp);
+				break;
+			}
+			case TT_STRING:{
 				char* temp = (char*)token->val;
 				printf("(%d -> %s)", token->type, temp);
 				break;
@@ -254,6 +260,59 @@ Token* make_error(Error* error, int line_no, int col_no){
 	return token;
 }
 
+Token* make_string(char* line, int* start, int* line_no, int* col_no){
+	char* word = (char*)calloc(STD_STRING_SIZE_LIMIT, sizeof(char));
+	int length = strlen(line);
+	int temp_length = 0;
+	int max_length = STD_STRING_SIZE_LIMIT;
+	char temp_char;
+	if(line[*start] != '\'' && line[*start] != '"'){
+		char* unexpected_val = (char*)malloc(sizeof(char));
+		*unexpected_val = line[*start];
+		return make_error(
+			IllegalCharacterError(
+				*line_no, *col_no, 2, unexpected_val, "'\""
+			),
+			*line_no, *col_no
+		);
+	}
+
+	char stopper = line[*start];
+	int isBackslashed = 0;
+
+	move(line_no, col_no, line, start, length);
+
+	while(
+		*start < length && *start != TT_EOF && 
+		(line[*start] != stopper || isBackslashed)
+	){
+		if(line[*start] == '\\')
+			isBackslashed = 1;
+		else if(line[*start] == stopper)
+			isBackslashed = 0;
+		word[temp_length] = line[*start];
+		temp_length++;
+		if(temp_length >= max_length){
+			expand_string(&word, temp_length, &max_length);
+		}
+		move(line_no, col_no, line, start, length);
+	}
+
+	word[temp_length] = '\0';
+
+	if(*start == length || *start == TT_EOF)
+		return make_error(EOFError(*line_no, *col_no), *line_no, *col_no);
+	
+	Token* token = (Token*)malloc(sizeof(Token));
+	// printf("Flag 2\n");
+	token->val = word, token->line_no = *line_no;
+	token->type = TT_VAR, token->col_no = *col_no;
+	token->isSingle = stopper == '\'' ? 1 : 2;
+	token->type = TT_STRING;
+	move(line_no, col_no, line, start, length);
+	return token;
+}
+
 void delete_array_of_pointers(void** arr, int t_size)
 {
 	free(arr);
@@ -334,6 +393,19 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			tokens[*curr_size]->col_no = *col_no;
 			move(line_no, col_no, line, &i, length);
 			(*curr_size)++;
+		}
+		else if(c == '\'' || c == '"'){
+			temp_token = make_string(line, &i, line_no, col_no);
+			if(temp_token->type == TT_ERROR)
+			{
+				temp_ptr = (Token**)malloc(sizeof(Token*));
+				*temp_ptr = temp_token;
+				return temp_ptr;
+			}
+			else{
+				tokens[*curr_size] = temp_token;
+				(*curr_size)++;
+			}
 		}
 		else{
 			if(curr_size != NULL){

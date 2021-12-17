@@ -54,6 +54,8 @@
 #define TT_COMMA 36
 #define TT_RETURN 37
 
+#define TT_STRING 38
+
 char* keywords_for_Violetrex_syntax[] = {
 								"if", "elseif", "elif", "else",
 								"True", "False", "true", "false",
@@ -85,6 +87,7 @@ Hashed values are here
 // This is for function
 
 #define STD_VAR_NAME_SIZE_LIMIT 30
+#define STD_STRING_SIZE_LIMIT 16
 #define ALPHABETS ""
 #define IS_ALPHABET(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
 #define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))

@@ -47,6 +47,10 @@ void printValue(Value* value){
 			printf("null");
 			break;
 		}
+		case TT_STRING:{
+			printf("%s", (char*)value->num);
+			break;
+		}
 		default:
 			printf("%p", value->num);
 	}
@@ -68,21 +72,30 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		case TT_ADD:
 			if(typo == TT_INT)
 				*((int*)answer->num) += TYPE_CASTER(changer->num, typp, typo);
-			else
+			else if(typo == TT_FLOAT)
 				*((double*)answer->num) += TYPE_CASTER(changer->num, typp, typo);
+			else if(typo == TT_STRING && typp == TT_STRING){
+				char* temp_string = (char*)answer->num;
+				char* temp_string2 = (char*)changer->num;
+				int new_length = strlen(temp_string) + strlen(temp_string2) + 2;
+				answer->num = (char*)calloc(new_length, sizeof(char));
+				strncpy((char*)(answer->num), temp_string, strlen(temp_string));
+				((char*)(answer->num))[strlen(temp_string)] = '\0';
+				strcat((char*)(answer->num), (char*)(changer->num));
+			}
 			// *(POINT_CASTER(answer->num, typo)) += TYPE_CASTER(changer->num, typo, typp);
 			// *((POINT_CASTER(typo))answer->num) += (TYPE_CASTER(typo))(*((POINT_CASTER(typp))changer->num));
 			break;
 		case TT_SUB:
 			if(typo == TT_INT)
 				*((int*)answer->num) -= TYPE_CASTER(changer->num, typp, typo);
-			else
+			else if(typo == TT_FLOAT)
 				*((double*)answer->num) -= TYPE_CASTER(changer->num, typp, typo);
 			break;
 		case TT_MUL:
 			if(typo == TT_INT)
 				*((int*)answer->num) *= TYPE_CASTER(changer->num, typp, typo);
-			else
+			else if(typo == TT_FLOAT)
 				*((double*)answer->num) *= TYPE_CASTER(changer->num, typp, typo);
 			break;
 		case TT_DIV:{
@@ -92,6 +105,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 				answer->num = new_val;
 				answer->valType = TT_FLOAT;
 			}
+			else if(typo != TT_FLOAT)
+				return;
 			*((double*)answer->num) /= TYPE_CASTER(changer->num, typp, typo);
 			break;
 		}
@@ -105,36 +120,59 @@ void alterValues(Value* answer, Value* changer, int op_type){
 			case TT_EQUALS:
 				new_value = typo == TT_INT ? *((int*)answer->num) == TYPE_CASTER(changer->num, typp, typo) : 
 							typo == TT_FLOAT ? *((double*)answer->num) == TYPE_CASTER(changer->num, typp, typo) : 
-							typo == TT_NULL ? typo == typp : 0;
+							typo == TT_NULL || typp == TT_NULL ? typo == typp : 
+							typo == TT_STRING ? strcmp(
+								(char*)(answer->num),(char*)(changer->num)
+							) == 0 : 
+							0;
 				break;
 			case TT_NOT_EQUALS:
 				new_value = typo == TT_INT ? *((int*)answer->num) != TYPE_CASTER(changer->num, typp, typo) : 
 							typo == TT_FLOAT ? *((double*)answer->num) != TYPE_CASTER(changer->num, typp, typo) : 
-							typo == TT_NULL ? typo != typp : 0;
+							typo == TT_NULL || typp == TT_NULL ? typo != typp : 
+							typo == TT_STRING ? strcmp(
+								(char*)(answer->num),(char*)(changer->num)
+							) != 0 : 0;
 				break;
 			case TT_LESS_THAN:
 				if(typo == TT_INT)
 					new_value = *((int*)answer->num) < TYPE_CASTER(changer->num, typp, typo);
-				else
+				else if(typo == TT_FLOAT)
 					new_value = *((double*)answer->num) < TYPE_CASTER(changer->num, typp, typo);
+				else if(typo == TT_STRING && typp == TT_STRING)
+					new_value = strcmp(
+									(char*)(answer->num),(char*)(changer->num)
+								) < 0;
 				break;
 			case TT_LESS_THAN_EQ:
 				if(typo == TT_INT)
 					new_value = *((int*)answer->num) <= TYPE_CASTER(changer->num, typp, typo);
-				else
+				else if(typo == TT_FLOAT)
 					new_value = *((double*)answer->num) <= TYPE_CASTER(changer->num, typp, typo);
+				else if(typo == TT_STRING && typp == TT_STRING)
+					new_value = strcmp(
+									(char*)(answer->num),(char*)(changer->num)
+								) <= 0;
 				break;
 			case TT_GREATER_THAN:
 				if(typo == TT_INT)
 					new_value = *((int*)answer->num) > TYPE_CASTER(changer->num, typp, typo);
-				else
+				else if(typo == TT_FLOAT)
 					new_value = *((double*)answer->num) > TYPE_CASTER(changer->num, typp, typo);
+				else if(typo == TT_STRING && typp == TT_STRING)
+					new_value = strcmp(
+									(char*)(answer->num),(char*)(changer->num)
+								) > 0;
 				break;
 			case TT_GREATER_THAN_EQ:
 				if(typo == TT_INT)
 					new_value = *((int*)answer->num) >= TYPE_CASTER(changer->num, typp, typo);
-				else
+				else if(typo == TT_FLOAT)
 					new_value = *((double*)answer->num) >= TYPE_CASTER(changer->num, typp, typo);
+				else if(typo == TT_STRING && typp == TT_STRING)
+					new_value = strcmp(
+									(char*)(answer->num),(char*)(changer->num)
+								) >= 0;
 				break;
 		}
 
@@ -256,6 +294,10 @@ Value* construct_Value(Token* token){
 			value->num = token->val;
 	}
 	value->line_no = token->line_no, value->col_no = token->col_no;
+}
+
+Value* getStringValue(Node* node){
+	return node->nodeType != STRING_NODE ? NULL : construct_Value(node->val);
 }
 
 Value* getNumValue(Node* node){
