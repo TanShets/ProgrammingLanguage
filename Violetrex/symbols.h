@@ -57,28 +57,74 @@
 #define TT_STRING 38
 
 char* keywords_for_Violetrex_syntax[] = {
-								"if", "elseif", "elif", "else",
-								"True", "False", "true", "false",
-								"null", "None", "Null", "and", "or",
-								"not", "while", "for", "to", "break",
-								"change", "function", "fn", "return"
+								"False", "None", "Null", "True", "and",
+								"break", "change", "elif", "else",
+								"elseif", "false", "fn", "for",
+								"function", "if", "not", "null",
+								"or", "return", "to", "true", "while"
 							};
 int keyword_token_for_Violetrex_syntax[] = {
-								TT_IF, TT_ELSEIF, TT_ELSEIF, TT_ELSE,
-								TT_TRUE, TT_FALSE, TT_TRUE, TT_FALSE,
-								TT_NULL, TT_NULL, TT_NULL, TT_AND, TT_OR,
-								TT_NOT, TT_WHILE, TT_FOR, TT_TO, TT_BREAK,
-								TT_CHANGE, TT_FUNCTION, TT_FUNCTION, TT_RETURN
+								TT_FALSE, TT_NULL, TT_NULL, TT_TRUE, TT_AND,
+								TT_BREAK, TT_CHANGE, TT_ELSEIF, TT_ELSE,
+								TT_ELSEIF, TT_FALSE, TT_FUNCTION, TT_FOR,
+								TT_FUNCTION, TT_IF, TT_NOT, TT_NULL,
+								TT_OR, TT_RETURN, TT_TO, TT_TRUE, TT_WHILE
 							};
 #define KEYWORDS keywords_for_Violetrex_syntax
 #define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
 #define KEYWORDS_SIZE 22
 
+#define INPUT_FN -100
+#define PRINT_FN -101
+#define STRING_FN -102
+
+char* default_function_names[] = {
+							"input", "print", "str", "string"
+						};
+
+int default_function_codes[] = {
+							INPUT_FN, PRINT_FN, STRING_FN, STRING_FN
+						};
+#define DEFAULT_FUNCTION_NAMES default_function_names
+#define DEFAULT_FUNCTION_CODES default_function_codes
+#define DEFAULT_FUNCTION_SIZE 4
+
+int get_function_code(char* name, char* arr[], int start, int n){
+	int mid = start + n / 2;
+	int cmp;
+	if(n == 1 && strcmp(arr[start], name) != 0)
+		return -1;
+	else if(name[0] == arr[mid][0]){
+		cmp = strcmp(name, arr[mid]);
+		switch(cmp){
+			case 0:
+				return mid;
+			case 1:
+				return get_function_code(name, arr, mid, n - n / 2);
+			case -1:
+				return get_function_code(name, arr, start, n / 2);
+		}
+	}
+	else if(name[0] < arr[mid][0])
+		return get_function_code(name, arr, start, n / 2);
+	else
+		return get_function_code(name, arr, mid, n - n / 2);
+}
+
+int function_code_getter(char* word){
+	int index = get_function_code(word, DEFAULT_FUNCTION_NAMES, 0, DEFAULT_FUNCTION_SIZE);
+	return index == -1 ? index : DEFAULT_FUNCTION_CODES[index];
+}
+
+#define GET_FUNCTION_CODE(x) function_code_getter(x)
+
 int keyword_token(char* word){
-	int i = 0;
-	while(i < KEYWORDS_SIZE && strcmp(word, KEYWORDS[i]) != 0)
-		i++;
-	return i < KEYWORDS_SIZE ? KEYWORDS_TOKEN[i] : -1;
+	int index = get_function_code(word, KEYWORDS, 0, KEYWORDS_SIZE);
+	return index == -1 ? index : KEYWORDS_TOKEN[index];
+	// int i = 0;
+	// while(i < KEYWORDS_SIZE && strcmp(word, KEYWORDS[i]) != 0)
+	// 	i++;
+	// return i < KEYWORDS_SIZE ? KEYWORDS_TOKEN[i] : -1;
 }
 /*
 Hashed values are here
@@ -316,6 +362,8 @@ char* num_to_str(int num){
 			expand_file_data(&answer, &max_size);
 		temp_num /= 10;
 	}
+	if(num == 0)
+		answer[0] = '0';
 	str_reverse(answer);
 	return answer;
 }

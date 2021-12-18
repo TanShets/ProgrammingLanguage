@@ -567,7 +567,7 @@ Node* make_ReturnNode(Token** tokens, int size, int* curr_index){
 	return ReturnNode(val_token, val, val->nodeType);
 }
 
-Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index){
+Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index, int isVarNode){
 	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_VAR){
 		return ErrorNode(
 			make_error(
@@ -612,7 +612,9 @@ Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index){
 	int temp_type, isFinished = 0;
 
 	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_RPAREN){
-		parameters[no_of_parameters] = value(tokens, size, curr_index);
+		parameters[no_of_parameters] = Parser(tokens, size, curr_index, isVarNode);
+		if(parameters[no_of_parameters]->nodeType == ERROR_NODE)
+			return parameters[no_of_parameters];
 		no_of_parameters++;
 		if(no_of_parameters == max_parameter_size)
 			expand_block(&parameters, &max_parameter_size);
@@ -752,7 +754,7 @@ Node* value(Token** tokens, int size, int* curr_index)
 			(*curr_index)++;
 			if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_LPAREN){
 				(*curr_index)--;
-				return make_FunctionCallNode(tokens, size, curr_index);
+				return make_FunctionCallNode(tokens, size, curr_index, 0);
 			}
 			else
 				return node;

@@ -21,6 +21,12 @@ typedef struct VALUE{
 	int valType, line_no, col_no;
 } Value;
 
+typedef struct INTERPRETER{
+    Value** values;
+    int no_of_values;
+    int isBroken;
+} Interpreter;
+
 void printValue(Value* value){
 	switch(value->valType){
 		case TT_INT:{
@@ -54,7 +60,6 @@ void printValue(Value* value){
 		default:
 			printf("%p", value->num);
 	}
-	printf("\n");
 }
 
 Value* viewNode(Node* node, Context* context, int* isNode);

@@ -46,6 +46,7 @@ int main(int argc, char** argv)
     // printf("Flag4 %d\n", t_size);
     // if(tokens != NULL)
     // print_token_array(tokens, curr_size);
+    // return 0;
     // else
     // 	printf("\nIt was null lol\n");
     //printf("\n\n\n\n");
@@ -71,8 +72,12 @@ int main(int argc, char** argv)
     //Index 0 is for loop node and index 1 is for function node
     Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode);
     // printf("Success\n");
-    printValues(interpreter);
+    Value** values = interpreter->values;
+    int no_of_values = interpreter->no_of_values;
+    if(no_of_values == 1 && (*values)->valType == TT_ERROR)
+        printValue(*values);
+    // printValues(interpreter);
     line_no++;
     col_no = 1;
-	return 0;
+	// return 0;
 }

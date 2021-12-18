@@ -1,13 +1,8 @@
 #pragma once
 #include "value.h"
+#include "default_functions.h"
 
 #define DEFAULT_NO_OF_VALUES 10
-
-typedef struct INTERPRETER{
-    Value** values;
-    int no_of_values;
-    int isBroken;
-} Interpreter;
 
 Interpreter* construct_Interpreter(Value** values, int no_of_values, int isBroken){
     Interpreter* interpreter = (Interpreter*)malloc(sizeof(Interpreter));
@@ -27,7 +22,7 @@ void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
     free(temp);
 }
 
-Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode);
+Value* getFunctionCallValue(Node* node, Context* context, int* isNode);
 
 Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
     if(node->nodeType != CONDITIONAL_NODE)
@@ -117,7 +112,7 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
 }
 
 Value* viewNode(Node* node, Context* context, int* isNode){
-	Value* answer;
+	Value* answer = NULL;
 	switch(node->nodeType){
         case VAR_ASSIGN_NODE:{
             answer = getVarAssignValue(node, context, isNode);
@@ -157,6 +152,10 @@ Value* viewNode(Node* node, Context* context, int* isNode){
 		}
         case STRING_NODE:{
             answer = getStringValue(node);
+            break;
+        }
+        case FUNCTION_CALL_NODE:{
+            answer = getFunctionCallValue(node, context, isNode);
             break;
         }
 		default:{
@@ -291,6 +290,9 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
 }
 
 Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
+    Value* tempo_vals = default_function_control(node, context, isNode);
+    if(tempo_vals != NULL)
+        return tempo_vals;
     Value** values = (Value**)malloc(sizeof(Value*));
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
@@ -327,7 +329,6 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
     Interpreter* temp_interpreter;
     Context* function_context = construct_Context();
     function_context->parent = context;
-
     for(i = 0; i < no_of_parameters; i++){
         key = (char*)(((Token*)parameters[i]->val)->val);
         temp_value = viewNode(param_vals[i], context, isNode);
@@ -485,12 +486,6 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
                 }
                 break;
             }
-            case FUNCTION_CALL_NODE:{
-                no_of_values = 1;
-                temp_values = (Value**)malloc(sizeof(Value*));
-                *temp_values = getFunctionCallValue(nodes[i], context, isNode);
-                break;
-            }
             default:{
                 no_of_values = 1;
                 temp_values = (Value**)malloc(sizeof(Value*));
@@ -520,6 +515,8 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
 void printValues(Interpreter* interpreter){
     Value** values = interpreter->values;
     int no_of_values = interpreter->no_of_values;
-    for(int i = 0; i < no_of_values; i++)
+    for(int i = 0; i < no_of_values; i++){
         printValue(values[i]);
+        printf("\n");
+    }
 }
