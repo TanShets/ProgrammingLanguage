@@ -231,8 +231,11 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
                 *no_of_values = temp_interpreter->no_of_values;
                 return temp_interpreter->values;
             }
-            else if(isNode[2] > 0)
+            else if(isNode[2] > 0){
                 flag = 1;
+                *no_of_values = temp_interpreter->no_of_values;
+                return temp_interpreter->values;
+            }
             isNode[0]--;
             if(flag == 1)
                 break;
@@ -279,8 +282,11 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
                 *no_of_values = temp_interpreter->no_of_values;
                 return temp_interpreter->values;
             }
-            else if(isNode[2] > 0)
+            else if(isNode[2] > 0){
                 flag = 1;
+                *no_of_values = temp_interpreter->no_of_values;
+                return temp_interpreter->values;
+            }
             isNode[0]--;
             if(flag == 1)
                 break;
@@ -337,8 +343,9 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
 
     isNode[1]++;
     temp_interpreter = Interpret(block, block_size, function_context, isNode);
-    if(temp_interpreter->no_of_values == 1 && isNode[1] < 0){
-        isNode[1] *= -1;
+    if(temp_interpreter->no_of_values == 1 && (isNode[1] < 0 || isNode[2] > 0)){
+        if(isNode[1] < 0)
+            isNode[1] *= -1;
         return *(temp_interpreter->values);
     }
     else{
@@ -365,6 +372,8 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
             line_no, col_no)
         );
     }
+    else if(isNode[2] > 0)
+        return *(temp_interpreter->values);
 	Value* val = *(temp_interpreter->values);
 	Value* val2;
 	Token* token;
@@ -493,15 +502,16 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
             }
         }
 
-        if(no_of_values == 1 && (*temp_values)->valType == TT_ERROR)
+        if(no_of_values == 1 && (*temp_values)->valType == TT_ERROR){
             isNode[2]++;
+        }
 
         if(total_no_of_values + no_of_values >= size)
             expand_Values(&values, &size, total_no_of_values + no_of_values);
         memmove(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
         total_no_of_values += no_of_values;
 
-        if(isNode[1] < 0){
+        if(isNode[1] < 0 || isNode[2] > 0){
             total_no_of_values = 1;
             values = temp_values;
         }

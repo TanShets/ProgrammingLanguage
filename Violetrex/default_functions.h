@@ -5,10 +5,6 @@
 
 Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode);
 
-int to_int(double num){
-
-}
-
 Value* print_function(Node* node, Context* context, int* isNode){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
@@ -51,6 +47,8 @@ Value* input_function(Node* node, Context* context, int* isNode){
     }
     else if(no_of_parameters == 1){
         temp = viewNode(*param_vals, context, isNode);
+        if(temp->valType == TT_ERROR)
+            return temp;
         printValue(temp);
     }
 
@@ -194,6 +192,192 @@ Value* convert_to_string(Node* node, Context* context, int* isNode){
     return construct_Value(token);
 }
 
+Value* convert_to_float(Node* node, Context* context, int* isNode){
+    int no_of_parameters = node->leftType;
+    Node** param_vals = (Node**)node->left;
+    int line_no = ((Token*)(node->val))->line_no;
+    int col_no = ((Token*)(node->val))->col_no;
+    if(no_of_parameters != 1){
+        Value* temp = construct_Value(
+            make_error(
+                SyntaxError(
+                    "only a single parameter like a value, Eg. 5, 5.5, etc.", 
+                    line_no, col_no
+                ),
+                line_no, col_no
+            )
+        );
+        return temp;
+    }
+    Value* temp_val = viewNode(*param_vals, context, isNode);
+    Value* answer = NULL;
+    if(temp_val == NULL){
+        temp_val = construct_Value(
+            make_error(
+                SyntaxError("Expected a value", line_no, col_no),
+                line_no, col_no
+            )
+        );
+        return temp_val;
+    }
+    double* new_val = NULL;
+    int line_no1, col_no1, index1;
+
+    switch(temp_val->valType){
+        case TT_INT:{
+            int num = *((int*)(temp_val->num));
+            new_val = (double*)malloc(sizeof(double));
+            *new_val = (double)num;
+            break;
+        }
+        case TT_FLOAT:{
+            new_val = (double*)malloc(sizeof(double));
+            *new_val = *((double*)(temp_val->num));
+            break;
+        }
+        case TT_STRING:
+            line_no1 = 0, col_no1 = 0, index1 = 0;
+            Token* token = make_number(
+                                (char*)(temp_val->num), &index1,
+                                &line_no1, &col_no1
+                            );
+            
+            if(token->type == TT_INT){
+                token->type = TT_FLOAT;
+                int tempo = *((int*)(token->val));
+                token->val = malloc(sizeof(double));
+                *((double*)(token->val)) = (double)tempo;
+            }
+            return construct_Value(token);
+        case TT_NULL:{
+            return construct_Value(
+                make_error(
+                    NullOperationError("to_float", line_no, col_no),
+                    line_no, col_no
+                )
+            );
+        }
+        case TT_TRUE:{
+            new_val = (double*)malloc(sizeof(double));
+            *new_val = 1.0;
+            break;
+        }
+        case TT_FALSE:{
+            new_val = (double*)malloc(sizeof(double));
+            *new_val = 0.0;
+            break;
+        }
+        case TT_ERROR:
+            return temp_val;
+        default:{
+            answer = construct_Value(
+                make_error(
+                    SyntaxError("a convertible and defined value", line_no, col_no),
+                    line_no, col_no
+                )
+            );
+            return answer;
+        }
+    }
+
+    Token* token = (Token*)malloc(sizeof(Token));
+    token->type = TT_FLOAT, token->val = new_val;
+    token->line_no = line_no, token->col_no = col_no;
+    return construct_Value(token);
+}
+
+Value* convert_to_int(Node* node, Context* context, int* isNode){
+    int no_of_parameters = node->leftType;
+    Node** param_vals = (Node**)node->left;
+    int line_no = ((Token*)(node->val))->line_no;
+    int col_no = ((Token*)(node->val))->col_no;
+    if(no_of_parameters != 1){
+        Value* temp = construct_Value(
+            make_error(
+                SyntaxError(
+                    "only a single parameter like a value, Eg. 5, 5.5, etc.", 
+                    line_no, col_no
+                ),
+                line_no, col_no
+            )
+        );
+        return temp;
+    }
+    Value* temp_val = viewNode(*param_vals, context, isNode);
+    Value* answer = NULL;
+    if(temp_val == NULL){
+        temp_val = construct_Value(
+            make_error(
+                SyntaxError("Expected a value", line_no, col_no),
+                line_no, col_no
+            )
+        );
+        return temp_val;
+    }
+    int* new_val = NULL;
+    int line_no1, col_no1, index1;
+    switch(temp_val->valType){
+        case TT_INT:{
+            new_val = (int*)malloc(sizeof(int));
+            *new_val = *((int*)(temp_val->num));
+            break;
+        }
+        case TT_FLOAT:{
+            new_val = (int*)malloc(sizeof(int));
+            *new_val = (int)(*((double*)(temp_val->num)) + 1e-9);
+            break;
+        }
+        case TT_STRING:
+            line_no1 = 0, col_no1 = 0, index1 = 0;
+            Token* token = make_number(
+                                (char*)(temp_val->num), &index1,
+                                &line_no1, &col_no1
+                            );
+            
+            if(token->type == TT_FLOAT){
+                token->type = TT_INT;
+                double* tempo = (double*)(token->val);
+                token->val = malloc(sizeof(int));
+                *((int*)(token->val)) = (int)(*tempo);
+            }
+            return construct_Value(token);
+        case TT_NULL:{
+            return construct_Value(
+                make_error(
+                    NullOperationError("to_int", line_no, col_no),
+                    line_no, col_no
+                )
+            );
+        }
+        case TT_TRUE:{
+            new_val = (int*)malloc(sizeof(int));
+            *new_val = 1;
+            break;
+        }
+        case TT_FALSE:{
+            new_val = (int*)malloc(sizeof(int));
+            *new_val = 0;
+            break;
+        }
+        case TT_ERROR:
+            return temp_val;
+        default:{
+            answer = construct_Value(
+                make_error(
+                    SyntaxError("a convertible and defined value", line_no, col_no),
+                    line_no, col_no
+                )
+            );
+            return answer;
+        }
+    }
+
+    Token* token = (Token*)malloc(sizeof(Token));
+    token->type = TT_INT, token->val = new_val;
+    token->line_no = line_no, token->col_no = col_no;
+    return construct_Value(token);
+}
+
 Value* default_function_control(Node* node, Context* context, int* isNode){
     char* key = (char*)(((Token*)node->val)->val);
     int function_num = GET_FUNCTION_CODE(key);
@@ -205,6 +389,10 @@ Value* default_function_control(Node* node, Context* context, int* isNode){
             return print_function(node, context, isNode);
         case STRING_FN:
             return convert_to_string(node, context, isNode);
+        case FLOAT_FN:
+            return convert_to_float(node, context, isNode);
+        case INT_FN:
+            return convert_to_int(node, context, isNode);
         default:
             return temp;
     }

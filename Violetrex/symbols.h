@@ -77,17 +77,21 @@ int keyword_token_for_Violetrex_syntax[] = {
 #define INPUT_FN -100
 #define PRINT_FN -101
 #define STRING_FN -102
+#define INT_FN -103
+#define FLOAT_FN -104
 
 char* default_function_names[] = {
-							"input", "print", "str", "string"
+							"float", "input", "int", "print", "str", 
+							"string"
 						};
 
 int default_function_codes[] = {
-							INPUT_FN, PRINT_FN, STRING_FN, STRING_FN
+							FLOAT_FN, INPUT_FN, INT_FN, PRINT_FN, STRING_FN, 
+							STRING_FN
 						};
 #define DEFAULT_FUNCTION_NAMES default_function_names
 #define DEFAULT_FUNCTION_CODES default_function_codes
-#define DEFAULT_FUNCTION_SIZE 4
+#define DEFAULT_FUNCTION_SIZE 6
 
 int get_function_code(char* name, char* arr[], int start, int n){
 	int mid = start + n / 2;
