@@ -115,6 +115,36 @@ void alterValues(Value* answer, Value* changer, int op_type){
 			*((double*)answer->num) /= TYPE_CASTER(changer->num, typp, typo);
 			break;
 		}
+		case TT_EXPONENT:{
+			if(typo == TT_INT && typp == TT_INT){
+				int* temp_answer = (int*)answer->num;
+				int temp_num = *temp_answer;
+				int index = *((int*)changer->num);
+				*temp_answer = 1;
+				if(index >= 0)
+					for(int i = 0; i < index; i++)
+						*temp_answer *= temp_num;
+				else{
+					answer->valType = TT_FLOAT;
+					answer->num = (double*)malloc(sizeof(double));
+					*((double*)answer->num) = 1;
+					for(int i = 0; i > index; i--)
+						*((double*)answer->num) /= temp_num;
+				}
+			}
+			else if(
+				(typo == TT_INT || typo == TT_FLOAT) && 
+				(typp == TT_INT || typp == TT_FLOAT)
+			){
+				double num1 = TYPE_CASTER(answer->num, typo, TT_FLOAT);
+				double num2 = TYPE_CASTER(changer->num, typp, TT_FLOAT);
+				num1 = pow(num1, num2);
+				answer->valType = TT_FLOAT;
+				answer->num = malloc(sizeof(double));
+				*((double*)answer->num) = num1;
+			}
+			break;
+		}
 	}
 
 	if(IN_BOOLEAN_OPERATORS(op_type)){

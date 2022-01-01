@@ -56,6 +56,8 @@
 
 #define TT_STRING 38
 
+#define TT_EXPONENT 39
+
 char* keywords_for_Violetrex_syntax[] = {
 								"False", "None", "Null", "True", "and",
 								"break", "change", "elif", "else",
@@ -143,10 +145,10 @@ Hashed values are here
 #define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))
 #define IS_ALLOWED_IN_VAR_NAME(c) (IS_ALPHANUMERIC(c) || c == '_')
 
-#define T_OPERATOR_SIZE 8
-char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!";
+#define T_OPERATOR_SIZE 9
+char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!^";
 
-#define T_OPERATOR_REVERSE_SIZE 19
+#define T_OPERATOR_REVERSE_SIZE 20
 int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_ADD, TT_SUB, TT_MUL, TT_DIV,
 	TT_EQ, TT_EQUALS, TT_NOT_EQUALS, 
@@ -154,7 +156,7 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_GREATER_THAN, TT_GREATER_THAN_EQ, 
 	TT_INCREMENT, TT_DECREMENT,
 	TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT,
-	TT_AND, TT_OR, TT_NOT, TT_TO
+	TT_AND, TT_OR, TT_NOT, TT_TO, TT_EXPONENT
 };
 
 #define IN_ASSIGNMENT_OPERATORS(x) ( \
@@ -235,6 +237,10 @@ int T_OPERATOR(char* c, int length)
 		case '!':
 			val = 0;
 			added_val = TT_NOT_EQUALS;
+			break;
+		case '^':
+			val = TT_EXPONENT;
+			length = 1;
 			break;
 		default:
 			return TT_EOF;

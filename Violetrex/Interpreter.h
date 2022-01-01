@@ -15,11 +15,12 @@ Interpreter* construct_Interpreter(Value** values, int no_of_values, int isBroke
 void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
     int old_no_of_values = *no_of_values;
     *no_of_values = 2 * new_no_of_values;
-    Value** new_values = (Value**)calloc(*no_of_values, sizeof(Value*));
-    memcpy(new_values, *values, old_no_of_values * sizeof(Value*));
-    Value** temp = *values;
-    *values = new_values;
-    free(temp);
+    *values = (Value**)realloc(*values, *no_of_values * sizeof(Value*));
+    // Value** new_values = (Value**)calloc(*no_of_values, sizeof(Value*));
+    // memcpy(new_values, *values, old_no_of_values * sizeof(Value*));
+    // Value** temp = *values;
+    // *values = new_values;
+    // free(temp);
 }
 
 Value* getFunctionCallValue(Node* node, Context* context, int* isNode);

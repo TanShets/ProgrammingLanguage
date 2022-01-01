@@ -209,11 +209,12 @@ Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 }
 
 void expand_string(char** s, int curr_size, int* max_size){
-	char* new_string = (char*)calloc(curr_size * 2, sizeof(char));
-	memcpy(new_string, *s, curr_size * sizeof(char));
-	char* temp = *s;
-	*s = new_string;
-	free(temp);
+	// char* new_string = (char*)calloc(curr_size * 2, sizeof(char));
+	*s = (char*)realloc(*s, 2 * curr_size * sizeof(char));
+	// memcpy(new_string, *s, curr_size * sizeof(char));
+	// char* temp = *s;
+	// *s = new_string;
+	// free(temp);
 	*max_size *= 2;
 }
 
@@ -320,13 +321,14 @@ void delete_array_of_pointers(void** arr, int t_size)
 
 void expand_tokens(Token*** tokens, int* initial_size)
 {
-	Token** new_token_array = (Token**)calloc(2 * (*initial_size), sizeof(Token*));
+	// Token** new_token_array = (Token**)calloc(2 * (*initial_size), sizeof(Token*));
 	
-	Token** temp_space = *tokens;
-	memcpy(new_token_array, *tokens, *initial_size * sizeof(Token*));
+	// Token** temp_space = *tokens;
+	// memcpy(new_token_array, *tokens, *initial_size * sizeof(Token*));
 
-	*tokens = new_token_array;
-	delete_array_of_pointers((void**)temp_space, *initial_size);
+	// *tokens = new_token_array;
+	// delete_array_of_pointers((void**)temp_space, *initial_size);
+	*tokens = (Token**)realloc(*tokens, 2 * (*initial_size) * sizeof(Token*));
 	*initial_size *= 2;
 }
 

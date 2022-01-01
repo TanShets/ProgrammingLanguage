@@ -22,7 +22,8 @@
 #define BOOLEAN_STATEMENT 1
 #define ADD_SUB 2
 #define PROD_QUO 3
-#define NUM_TO_NUM 4
+#define EXPONENT 4
+#define NUM_TO_NUM 5
 
 #define DEFAULT_NO_OF_FUNCTION_PARAMETERS 5
 
@@ -209,34 +210,38 @@ void expand_arrays(
 ){
 	int old_no_of_blocks = *no_of_blocks;
 	*no_of_blocks *= 2;
-	Node** new_statements = (Node**)calloc(*no_of_blocks, sizeof(Node*));
-	Node*** new_blocks = (Node***)calloc(*no_of_blocks, sizeof(Node**));
-	int* new_block_lengths = (int*)calloc(*no_of_blocks, sizeof(int));
-	memset(new_block_lengths, 0, *no_of_blocks * sizeof(int));
-	Node** temp1 = *statements;
-	Node*** temp2 = *blocks;
-	int* temp3 = *block_lengths;
+	*statements = (Node**)realloc(*statements, *no_of_blocks * sizeof(Node*));
+	*blocks = (Node***)realloc(*blocks, *no_of_blocks * sizeof(Node**));
+	*block_lengths = (int*)realloc(*block_lengths, *no_of_blocks * sizeof(int));
+	// Node** new_statements = (Node**)calloc(*no_of_blocks, sizeof(Node*));
+	// Node*** new_blocks = (Node***)calloc(*no_of_blocks, sizeof(Node**));
+	// int* new_block_lengths = (int*)calloc(*no_of_blocks, sizeof(int));
+	// memset(new_block_lengths, 0, *no_of_blocks * sizeof(int));
+	// Node** temp1 = *statements;
+	// Node*** temp2 = *blocks;
+	// int* temp3 = *block_lengths;
 
-	memcpy(new_statements, *statements, old_no_of_blocks * sizeof(Node*));
-	memcpy(new_blocks, *blocks, old_no_of_blocks * sizeof(Node**));
-	memcpy(new_block_lengths, *block_lengths, old_no_of_blocks * sizeof(int));
+	// memcpy(new_statements, *statements, old_no_of_blocks * sizeof(Node*));
+	// memcpy(new_blocks, *blocks, old_no_of_blocks * sizeof(Node**));
+	// memcpy(new_block_lengths, *block_lengths, old_no_of_blocks * sizeof(int));
 
-	*statements = new_statements;
-	*blocks = new_blocks;
-	*block_lengths = new_block_lengths;
-	free(temp1);
-	free(temp2);
-	free(temp3);
+	// *statements = new_statements;
+	// *blocks = new_blocks;
+	// *block_lengths = new_block_lengths;
+	// free(temp1);
+	// free(temp2);
+	// free(temp3);
 }
 
 void expand_block(Node*** block, int* block_size){
 	int old_block_size = *block_size;
 	*block_size *= 2;
-	Node** old_block = *block;
-	Node** new_block = (Node**)calloc(*block_size, sizeof(Node*));
-	memcpy(new_block, *block, old_block_size * sizeof(Node*));
-	*block = new_block;
-	free(old_block);
+	*block = (Node**)realloc(*block, *block_size * sizeof(Node*));
+	// Node** old_block = *block;
+	// Node** new_block = (Node**)calloc(*block_size, sizeof(Node*));
+	// memcpy(new_block, *block, old_block_size * sizeof(Node*));
+	// *block = new_block;
+	// free(old_block);
 }
 
 Node* value(Token** tokens, int size, int* curr_index);
@@ -1028,6 +1033,8 @@ Node* value(Token** tokens, int size, int* curr_index)
 
 Node* prodquo(Token** tokens, int size, int* curr_index);
 
+Node* exponent(Token** tokens, int size, int* curr_index);
+
 Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation)
 {
 	if(*curr_index == TT_EOF || *curr_index == size){
@@ -1071,6 +1078,10 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			ops[TT_TO] = 1;
 			break;
 		}
+		case EXPONENT:{
+			ops[TT_EXPONENT] = 1;
+			break;
+		}
 	}
 
 	Node *left = NULL, *right = NULL;
@@ -1082,6 +1093,10 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 			break;
 		}
 		case PROD_QUO:{
+			left = exponent(tokens, size, curr_index);
+			break;
+		}
+		case EXPONENT:{
 			left = value(tokens, size, curr_index);
 			break;
 		}
@@ -1120,7 +1135,11 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 				break;
 			}
 			case PROD_QUO:{
-				right = value(tokens, size, curr_index);
+				right = exponent(tokens, size, curr_index);
+				break;
+			}
+			case EXPONENT:{
+				right = exponent(tokens, size, curr_index);
 				break;
 			}
 			case BOOLEAN_STATEMENT:{
@@ -1154,6 +1173,11 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 	}
 
 	return left;
+}
+
+Node* exponent(Token** tokens, int size, int* curr_index)
+{
+	return operation(tokens, size, curr_index, EXPONENT);
 }
 
 Node* prodquo(Token** tokens, int size, int* curr_index)

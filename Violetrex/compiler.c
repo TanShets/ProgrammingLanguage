@@ -68,6 +68,7 @@ int main(int argc, char** argv)
     }
     // val = viewNode(node, context);
     // printValue(val);
+    // return 0;
     int isNode[] = {0, 0, 0};
     //Index 0 is for loop node and index 1 is for function node
     Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode);
