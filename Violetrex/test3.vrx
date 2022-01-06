@@ -12,4 +12,7 @@ a[0, 1, 'shiy'] = [5, 6, 989]
 print(a)
 
 b = m()[255]
+print(a)
 print(b)
+a[0] += 3
+print(a)

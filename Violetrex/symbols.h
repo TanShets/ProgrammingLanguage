@@ -257,7 +257,8 @@ int T_OPERATOR(char* c, int length)
 
 	if(length > 1)
 	{
-		return c[1] == '=' && strchr(":^", c[0]) != NULL ? 
+		// printf("c[1] %d %d\n", c[1] == '=', strchr(":^", c[0]) != NULL);
+		return c[1] == '=' && strchr(":^", c[0]) == NULL ? 
 				val + added_val : TT_EOF;
 	}
 
