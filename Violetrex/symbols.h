@@ -405,7 +405,7 @@ char* value_to_string_eq(void* num, int type){
 			char* temp_str2 = NULL;
 			double num1 = *((double*)num);
             // printf("Num: %lf\n", num);
-            int int_part = (int)num;
+            int int_part = (int)num1;
             int zero_string = 0;
             num1 -= (double)int_part;
             while(num1 - (double)((int)(num1 + 1e-9)) > pow(10, -12)){
