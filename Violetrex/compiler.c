@@ -64,7 +64,6 @@ int main(int argc, char** argv)
             printNode(node, 0);
             return 0;
         }
-        // printNode(node, 0);
     }
     // val = viewNode(node, context);
     // printValue(val);

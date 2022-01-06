@@ -1,8 +1,52 @@
 #pragma once
 #include "value.h"
 #include "default_functions.h"
+#include "array_value.h"
 
 #define DEFAULT_NO_OF_VALUES 10
+
+void printValue(Value* value){
+	if(value == NULL){
+		printf("Null value");
+		return;
+	}
+	switch(value->valType){
+		case TT_INT:{
+			printf("%d", *((int*)(value->num)));
+			break;
+		}
+		case TT_FLOAT:{
+			printf("%lf", *((double*)(value->num)));
+			break;
+		}
+		case TT_ERROR:{
+			printError((Error*)value->num);
+			break;
+		}
+		case TT_TRUE:{
+			printf("true");
+			break;
+		}
+		case TT_FALSE:{
+			printf("false");
+			break;
+		}
+		case TT_NULL:{
+			printf("null");
+			break;
+		}
+		case TT_STRING:{
+			printf("%s", (char*)value->num);
+			break;
+		}
+        case TT_ARRAY:{
+            print_ArrayValue((ArrayValue*)value->num);
+            break;
+        }
+		default:
+			printf("%p", value->num);
+	}
+}
 
 Interpreter* construct_Interpreter(Value** values, int no_of_values, int isBroken){
     Interpreter* interpreter = (Interpreter*)malloc(sizeof(Interpreter));
@@ -24,6 +68,8 @@ void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
 }
 
 Value* getFunctionCallValue(Node* node, Context* context, int* isNode);
+
+Value* getIndexValue(Node* node, Context* context, int* isNode);
 
 Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
     if(node->nodeType != CONDITIONAL_NODE)
@@ -112,6 +158,28 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
     }
 }
 
+Value* getArrayValue(Node* node, Context* context, int* isNode){
+    if(node->nodeType != ARRAY_NODE)
+        return NULL;
+    Value* val = construct_Value(node->val);
+    ArrayValue* arrayValue = construct_ArrayValue(node->rightType);
+    Node** keys = (Node**)node->left;
+    Node** values = (Node**)node->right;
+    Value *temp_key, *temp_val;
+    int i;
+    for(i = 0; i < node->rightType; i++){
+        temp_key = keys[i] != NULL ? viewNode(keys[i], context, isNode) : NULL;
+        if(temp_key != NULL && temp_key->valType == TT_ERROR)
+            return temp_key;
+        temp_val = viewNode(values[i], context, isNode);
+        if(temp_val->valType == TT_ERROR)
+            return temp_val;
+        modify_ArrayValue(arrayValue, temp_key, temp_val);
+    }
+    val->num = arrayValue;
+    return val;
+}
+
 Value* viewNode(Node* node, Context* context, int* isNode){
 	Value* answer = NULL;
 	switch(node->nodeType){
@@ -159,6 +227,14 @@ Value* viewNode(Node* node, Context* context, int* isNode){
             answer = getFunctionCallValue(node, context, isNode);
             break;
         }
+        case ARRAY_NODE:{
+            answer = getArrayValue(node, context, isNode);
+            break;
+        }
+        case INDEX_NODE:{
+            answer = getIndexValue(node, context, isNode);
+            break;
+        }
 		default:{
 			answer = NULL;
 		}
@@ -202,6 +278,53 @@ int isNegativeValue(Value* value){
         default:
             return 0;
     }
+}
+
+Value* getIndexValue(Node* node, Context* context, int* isNode){
+    Node* starter = (Node*)(node->left);
+    Value* arr_val = viewNode(starter, context, isNode);
+    if(arr_val->valType != TT_ARRAY){
+        char foofighter[] = {"foo"};
+        char* key = starter->nodeType == VAR_NODE || 
+                    starter->nodeType == FUNCTION_CALL_NODE ? 
+                    (char*)(starter->val->val) : foofighter;
+        
+        return construct_Value(make_error(
+            IndexError(key, starter->val->line_no, starter->val->col_no),
+            starter->val->line_no, starter->val->col_no
+        ));
+    }
+
+    ArrayValue* arrayValue = (ArrayValue*)(arr_val->num);
+    Node** indices = (Node**)(node->right);
+    int count = node->rightType;
+
+    Value *temp_key, *temp_val;
+    Value** values = count > 1 ? (Value**)calloc(count, sizeof(Value*)) : NULL;
+    for(int i = 0; i < count; i++){
+        temp_key = viewNode(indices[i], context, isNode);
+        if(temp_key->valType == TT_ERROR)
+            return temp_key;
+        
+        temp_val = find_in_ArrayValue(arrayValue, temp_key);
+        if(temp_val->valType == TT_ERROR)
+            return temp_val;
+        
+        if(count > 1){
+            values[i] = temp_val;
+        }
+    }
+
+    if(count > 1){
+        temp_val = (Value*)malloc(sizeof(Value));
+        temp_val->valType = TT_ARRAY;
+        temp_val->line_no = values[0]->line_no;
+        temp_val->col_no = values[1]->col_no;
+        temp_val->num = get_ArrayValue_from_values(values, count);
+        return temp_val;
+    }
+    else
+        return temp_val;
 }
 
 Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
@@ -360,8 +483,29 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
 }
 
 Value* getVarAssignValue(Node* node, Context* context, int* isNode){
-	char* key = (char*)(((Token*)node->left)->val);
-	// printf("%s: ", key);
+	char* key = NULL;
+    Node* starter = NULL;
+    Node* temp;
+    switch(node->leftType){
+        case INDEX_NODE:{
+            starter = (Node*)node->left;
+            // if(node->leftType != VAR_NODE && node->leftType != INDEX_NODE)
+            key = NULL;
+            temp = starter;
+            while(temp != NULL && temp->leftType != INDEX_NODE)
+                temp = (Node*)(temp->left);
+            key = (char*)(starter->val->val);
+            break;
+        }
+        case VAR_NODE:{
+            Node* key_node = (Node*)node->left;
+            key = (char*)(key_node->val->val);
+            break;
+        }
+        default:{
+            key = (char*)(((Token*)node->left)->val);
+        }
+    }
 	// printNode((Node*)(node->right), 0);
     Node* nodes = (Node*)node->right;
     Interpreter* temp_interpreter = Interpret(&nodes, 1, context, isNode);
@@ -379,11 +523,25 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	Value* val2;
 	Token* token;
 	void** answer = NULL;
+    Value* temp_answer;
 	if(node->val->type != TT_EQ){
+        printf("Animals 2\n");
 		line_no = node->val->line_no;
 		col_no = node->val->col_no;
-		answer = search_from_context(context, key);
-		if(answer[1] != NULL && *((int*)answer[1]) != TT_ERROR){
+        if(node->leftType == INDEX_NODE){
+            temp_answer = viewNode(starter, context, isNode);
+            answer = (void**)calloc(2, sizeof(void*));
+            answer[1] = (int*)malloc(sizeof(int));
+            *((int*)answer[1]) = temp_answer->valType;
+            answer[0] = temp_answer->num;
+        }
+		else
+            answer = search_from_context(context, key);
+        
+		if(
+            answer[1] != NULL && *((int*)answer[1]) != TT_ERROR && 
+            *((int*)answer[1]) != TT_ARRAY
+        ){
 			token = (Token*)malloc(sizeof(Token));
 			token->type = *((int*)answer[1]);
 			token->val = answer[0];
@@ -407,16 +565,91 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 			if(val->valType == TT_ERROR)
 				return val;
 		}
-		else
+        else if(answer[1] != NULL && *((int*)answer[1]) == TT_ARRAY){
+            return construct_Value(
+                make_error(
+                    InvalidArrayOperationError(
+                        key, (char*)(node->val->val), line_no, col_no
+                    ), line_no, col_no
+                )
+            );
+        }
+		else{
 			return construct_Value(
 				make_error(
 					ValueNotFoundError(key, line_no, col_no), line_no, col_no
 				)
 			);
+        }
 	}
 	
 	// printValue(val);
-	modify_context(context, key, val->num, val->valType);
+    int type_of_node = starter != NULL ? starter->nodeType : -1;
+	if(type_of_node == INDEX_NODE){
+        Node* array = (Node*)starter->left;
+        Value* array_value = viewNode(array, context, isNode);
+        if(array_value->valType != TT_ARRAY){
+            return construct_Value(
+                make_error(
+                    InvalidArrayOperationError(
+                        key, (char*)(node->val->val), line_no, col_no
+                    ), line_no, col_no
+                )
+            );
+        }
+
+        int count = starter->rightType;
+        Node** indices = (Node**)(starter->right);
+        Value *temp_key;
+        ArrayValue* arrayValue = (ArrayValue*)(array_value->num);
+        int i;
+        if(count <= 1){
+            temp_key = viewNode(*indices, context, isNode);
+            if(temp_key->valType == TT_ERROR)
+                return temp_key;
+            modify_ArrayValue(arrayValue, temp_key, val);
+        }
+        else{
+            if(val->valType != TT_ARRAY){
+                return construct_Value(
+                    make_error(
+                        MisMatchError(key, line_no, col_no), line_no, col_no
+                    )
+                );
+            }
+
+            ArrayValue* array_vals = (ArrayValue*)(val->num);
+            int vals_count = array_vals->curr_size;
+            if(count != vals_count){
+                return construct_Value(
+                    make_error(
+                        MisMatchError(key, line_no, col_no), line_no, col_no
+                    )
+                );
+            }
+            Token* token = (Token*)malloc(sizeof(Token));
+            token->type = TT_INT;
+            token->line_no = val->line_no, token->col_no = val->col_no;
+            token->val = malloc(sizeof(int));
+            temp_key = construct_Value(token);
+            Value* temp_val;
+            for(i = 0; i < count; i++){
+                *((int*)temp_key->num) = i;
+                temp_val = find_in_ArrayValue(array_vals, temp_key);
+                if(temp_val->valType == TT_ERROR)
+                    return temp_val;
+                
+                temp_key = viewNode(indices[i], context, isNode);
+                if(temp_key->valType == TT_ERROR)
+                    return temp_key;
+                
+                modify_ArrayValue(arrayValue, temp_key, temp_val);
+            }
+        }
+    }
+    else{
+        modify_context(context, key, val->num, val->valType);
+    }
 	
 	if(node->isVarNode != 0){
 		return val;
@@ -438,6 +671,7 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
     int breaker = 0;
     for(i = 0; i < no_of_nodes; i++){
         no_of_values = 1;
+        // printf("Node %d\n", i);
         switch(nodes[i]->nodeType){
             case CONDITIONAL_NODE:{
                 temp_values = getConditionalNodeValue(nodes[i], &no_of_values, context, isNode);
@@ -499,6 +733,7 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
             default:{
                 no_of_values = 1;
                 temp_values = (Value**)malloc(sizeof(Value*));
+                // printf("Hamon\n");
                 *temp_values = viewNode(nodes[i], context, isNode);
             }
         }

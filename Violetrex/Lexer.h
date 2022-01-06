@@ -358,7 +358,10 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			tokens[*curr_size] = make_operator(line, &i, line_no, col_no);
 			(*curr_size)++;
 		}
-		else if(c == '(' || c == ')' || c == '{' || c == '}'){
+		else if(
+			c == '(' || c == ')' || c == '{' || c == '}' || 
+			c == '[' || c == ']'
+		){
 			tokens[*curr_size] = (Token*)malloc(sizeof(Token));
 			temp_char = (char*)malloc(sizeof(char));
 			*temp_char = line[i];

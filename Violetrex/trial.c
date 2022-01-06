@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "symbols.h"
 
 int add(int a, int b)
@@ -12,5 +13,6 @@ int main(){
 	printf("%s", INT_TO_STR(0));
 	while((c = getchar()) != EOF)
 		if(c != '\n') printf("%c%d", c, count++);
+	
 	return 0;
 }

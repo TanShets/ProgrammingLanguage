@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "symbols.h"
 
 #define ILLEGAL_CHAR_ERROR 0
 #define EOF_ERROR 1
@@ -11,6 +12,10 @@
 #define VALUE_NOT_FOUND_ERROR 4
 #define NULL_OPERATION_ERROR 5
 #define FUNCTION_NOT_FOUND_ERROR 6
+#define KEY_NOT_FOUND_ERROR 7
+#define INVALID_ARRAY_OPERATION_ERROR 8
+#define INDEX_ERROR 9
+#define MISMATCH_ERROR 10
 
 typedef struct ERROR{
     int errType;
@@ -57,6 +62,22 @@ void printError(Error* error){
         }
         case FUNCTION_NOT_FOUND_ERROR:{
             printf("\nFunctionNotFoundError: ");
+            break;
+        }
+        case KEY_NOT_FOUND_ERROR:{
+            printf("\nKeyNotFoundError: ");
+            break;
+        }
+        case INVALID_ARRAY_OPERATION_ERROR:{
+            printf("\nInvalidArrayOperationError: ");
+            break;
+        }
+        case INDEX_ERROR:{
+            printf("\nIndexError: ");
+            break;
+        }
+        case MISMATCH_ERROR:{
+            printf("\nMisMatchError: ");
             break;
         }
         default:{
@@ -137,4 +158,38 @@ Error* NullOperationError(char* op, int line_no, int col_no){
     strcat(statement, op);
     strcat(statement, "'");
     return construct_Error(NULL_OPERATION_ERROR, statement, line_no, col_no);
+}
+
+Error* InvalidArrayOperationError(char* arr_name, char* op, int line_no, int col_no){
+    char statement[200] = {"Invalid Operation '"};
+    strcat(statement, op);
+    strcat(statement, "'");
+    strcat(statement, " on array '");
+    strcat(statement, arr_name);
+    strcat(statement, "'");
+    return construct_Error(INVALID_ARRAY_OPERATION_ERROR, statement, line_no, col_no);
+}
+
+Error* KeyNotFoundError(void* val, int type, int line_no, int col_no){
+    char statement[100] = {"Cannot find key: "};
+    strcat(statement, value_to_string_eq(val, type));
+    return construct_Error(KEY_NOT_FOUND_ERROR, statement, line_no, col_no);
+}
+
+Error* IndexError(char* var_name, int line_no, int col_no){
+    char statement[100] = {"Illegal Indexing on variable '"};
+    int length = strlen(statement) + strlen(var_name);
+    strncat(statement, var_name, strlen(var_name));
+    statement[length] = '\0';
+    strcat(statement, "' which is not an array");
+    return construct_Error(INDEX_ERROR, statement, line_no, col_no);
+}
+
+Error* MisMatchError(char* var_name, int line_no, int col_no){
+    char statement[100] = {"Mismatched assignment to indices on variable '"};
+    int length = strlen(statement) + strlen(var_name);
+    strncat(statement, var_name, strlen(var_name));
+    statement[length] = '\0';
+    strcat(statement, "'");
+    return construct_Error(MISMATCH_ERROR, statement, line_no, col_no);
 }

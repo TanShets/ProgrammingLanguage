@@ -27,39 +27,42 @@ typedef struct INTERPRETER{
     int isBroken;
 } Interpreter;
 
-void printValue(Value* value){
+void printValue(Value* value);
+
+Value* copy_Value(Value* value){
+	Value* new_value = (Value*)malloc(sizeof(Value));
+	new_value->line_no = value->line_no, new_value->col_no = value->col_no;
+	new_value->valType = value->valType;
 	switch(value->valType){
-		case TT_INT:{
-			printf("%d", *((int*)(value->num)));
-			break;
+		case TT_INT:
+			new_value->num = malloc(sizeof(int));
+            *((int*)new_value->num) = *((int*)value->num);
+            break;
+        case TT_FLOAT:
+			new_value->num = malloc(sizeof(double));
+            *((double*)new_value->num) = *((double*)value->num);
+            break;
+        case TT_NULL:
+            new_value->num = value->num;
+            break;
+        case TT_STRING:{
+            char* word1 = (char*)value->num;
+			char* word2 = (char*)calloc(strlen(word1) + 2, sizeof(char));
+			strncpy(word2, word1, strlen(word1));
+			word2[strlen(word1)] = '\0';
+			new_value->num = word2;
+            break;
 		}
-		case TT_FLOAT:{
-			printf("%lf", *((double*)(value->num)));
-			break;
-		}
-		case TT_ERROR:{
-			printError((Error*)value->num);
-			break;
-		}
-		case TT_TRUE:{
-			printf("true");
-			break;
-		}
-		case TT_FALSE:{
-			printf("false");
-			break;
-		}
-		case TT_NULL:{
-			printf("null");
-			break;
-		}
-		case TT_STRING:{
-			printf("%s", (char*)value->num);
-			break;
-		}
-		default:
-			printf("%p", value->num);
+        case TT_TRUE:
+            new_value->num = value->num;
+            break;
+        case TT_FALSE:
+            new_value->num = value->num;
+            break;
+        default:
+            return NULL;
 	}
+	return new_value;
 }
 
 Value* viewNode(Node* node, Context* context, int* isNode);

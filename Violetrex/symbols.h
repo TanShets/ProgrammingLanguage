@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define TT_NULL -3
 #define TT_ERROR -2
@@ -57,6 +58,11 @@
 #define TT_STRING 38
 
 #define TT_EXPONENT 39
+
+#define TT_ARRAY_OPEN 40
+#define TT_ARRAY_CLOSE 41
+#define TT_ARRAY_KEY_VAL_SEPARATOR 42
+#define TT_ARRAY 43
 
 char* keywords_for_Violetrex_syntax[] = {
 								"False", "None", "Null", "True", "and",
@@ -145,10 +151,10 @@ Hashed values are here
 #define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))
 #define IS_ALLOWED_IN_VAR_NAME(c) (IS_ALPHANUMERIC(c) || c == '_')
 
-#define T_OPERATOR_SIZE 9
-char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!^";
+#define T_OPERATOR_SIZE 11
+char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!^:";
 
-#define T_OPERATOR_REVERSE_SIZE 20
+#define T_OPERATOR_REVERSE_SIZE 21
 int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_ADD, TT_SUB, TT_MUL, TT_DIV,
 	TT_EQ, TT_EQUALS, TT_NOT_EQUALS, 
@@ -156,7 +162,8 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 	TT_GREATER_THAN, TT_GREATER_THAN_EQ, 
 	TT_INCREMENT, TT_DECREMENT,
 	TT_PRODUCT_INCREMENT, TT_PRODUCT_DECREMENT,
-	TT_AND, TT_OR, TT_NOT, TT_TO, TT_EXPONENT
+	TT_AND, TT_OR, TT_NOT, TT_TO, TT_EXPONENT,
+	TT_ARRAY_KEY_VAL_SEPARATOR
 };
 
 #define IN_ASSIGNMENT_OPERATORS(x) ( \
@@ -240,7 +247,9 @@ int T_OPERATOR(char* c, int length)
 			break;
 		case '^':
 			val = TT_EXPONENT;
-			length = 1;
+			break;
+		case ':':
+			val = TT_ARRAY_KEY_VAL_SEPARATOR;
 			break;
 		default:
 			return TT_EOF;
@@ -248,7 +257,8 @@ int T_OPERATOR(char* c, int length)
 
 	if(length > 1)
 	{
-		return c[1] == '=' ? val + added_val : TT_EOF;
+		return c[1] == '=' && strchr(":^", c[0]) != NULL ? 
+				val + added_val : TT_EOF;
 	}
 
 	return val;
@@ -264,6 +274,10 @@ int T_BRACKET(char c){
 			return TT_BLOCK_OPEN;
 		case '}':
 			return TT_BLOCK_CLOSE;
+		case '[':
+			return TT_ARRAY_OPEN;
+		case ']':
+			return TT_ARRAY_CLOSE;
 		default:
 			return TT_EOF;
 	}
@@ -379,3 +393,69 @@ char* num_to_str(int num){
 }
 
 #define INT_TO_STR(x) num_to_str(x)
+
+char* value_to_string_eq(void* num, int type){
+	switch(type){
+		case TT_INT:{
+			return INT_TO_STR(*((int*)num));
+		}
+		case TT_FLOAT:{
+			char* str_val = NULL;
+			char* temp_str = NULL;
+			char* temp_str2 = NULL;
+			double num1 = *((double*)num);
+            // printf("Num: %lf\n", num);
+            int int_part = (int)num;
+            int zero_string = 0;
+            num1 -= (double)int_part;
+            while(num1 - (double)((int)(num1 + 1e-9)) > pow(10, -12)){
+                // printf("ss: %.5lf %.5lf %.5lf\n", num, (double)((int)(num + 1e-10)), num - (double)((int)(num + 1e-10)));
+                num1 *= 10;
+                zero_string++;
+                if(zero_string > 5)
+                    break;
+                //printf("Wait %lf\n", num);
+            }
+            int decimal_part = (int)(num1 + 1e-9);
+            str_val = INT_TO_STR(int_part);
+            temp_str = INT_TO_STR(decimal_part);
+            int_part = strlen(str_val) + zero_string;
+
+            temp_str2 = str_val;
+            str_val = (char*)calloc(int_part * 2, sizeof(char));
+            int length = 0;
+            strncpy(str_val, temp_str2, strlen(temp_str2));
+            length = strlen(temp_str2);
+            str_val[length] = '\0';
+            strncat(str_val, ".", 1);
+            length++;
+            str_val[length] = '\0';
+            for(int i = 0; i < zero_string - strlen(temp_str); i++){
+                strncat(str_val, "0", 1);
+                length++;
+                str_val[length] = '\0';
+            }
+            strncat(str_val, temp_str, strlen(temp_str));
+            length += strlen(temp_str);
+            str_val[length] = '\0';
+            return str_val;
+		}
+		case TT_TRUE:{
+			char* answer = {"true"};
+			return answer;
+		}
+		case TT_FALSE:{
+			char* answer = {"false"};
+			return answer;
+		}
+		case TT_NULL:{
+			char* answer = {"null"};
+			return answer;
+		}
+		case TT_STRING:{
+			return (char*)num;
+		}
+		default:
+			return NULL;
+	}
+}
