@@ -473,6 +473,8 @@ Node* make_FunctionDefinitionNode(Token** tokens, int size, int* curr_index){
 			isFinished = 1;
 	}
 
+	isFinished = no_of_parameters > 0 ? isFinished : 1;
+
 	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_RPAREN){
 		return ErrorNode(
 			make_error(
@@ -555,7 +557,6 @@ Node* make_FunctionDefinitionNode(Token** tokens, int size, int* curr_index){
 	}
 
 	(*curr_index)++;
-
 	return FunctionDefinitionNode(
 			val_token, parameters, no_of_parameters, block, 
 			no_of_blocks, isAssigned, name
@@ -767,6 +768,8 @@ Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index, int isVar
 		else
 			isFinished = 1;
 	}
+
+	isFinished = no_of_parameters > 0 ? isFinished : 1;
 
 	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_RPAREN){
 		return ErrorNode(
@@ -1463,7 +1466,7 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 			Node* right = Parser(tokens, size, curr_index, isVarNode);
 			if(right->nodeType == FUNCTION_DEFINITION_NODE){
 				right->else_block_Type = 1;
-				right->else_block = left;
+				right->else_block = left->val;
 			}
 			return right->nodeType == ERROR_NODE ? right : 
 				right->nodeType == FUNCTION_DEFINITION_NODE ? right : 

@@ -671,7 +671,6 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
     int breaker = 0;
     for(i = 0; i < no_of_nodes; i++){
         no_of_values = 1;
-        // printf("Node %d\n", i);
         switch(nodes[i]->nodeType){
             case CONDITIONAL_NODE:{
                 temp_values = getConditionalNodeValue(nodes[i], &no_of_values, context, isNode);

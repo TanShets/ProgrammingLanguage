@@ -41,13 +41,9 @@ ArrayValue* construct_ArrayValue(int size){
 }
 
 ArrayValue* get_ArrayValue_from_values(Value** values, int size){
-    printf("Kaioken ");
     ArrayValue* arrayValue = construct_ArrayValue(size);
-    printf("x20\n");
     for(int i = 0; i < size; i++){
-        printf("x%d\n", i);
         modify_ArrayValue(arrayValue, NULL, values[i]);
-        printf("y%d\n", i);
     }
     return arrayValue;
 }

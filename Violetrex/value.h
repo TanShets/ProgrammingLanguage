@@ -456,11 +456,11 @@ Value* getFunctionDefinitionValue(Node* node, Context* context){
             )
         );
     }
-
     char* name = (char*)(((Token*)node->else_block)->val);
 	char* num_params = INT_TO_STR(node->leftType);
 	char* temp_name = (char*)calloc(strlen(name) + strlen(num_params) + 5, sizeof(char));
 	strncpy(temp_name, name, strlen(name));
+	temp_name[strlen(name)] = '\0';
 	strcat(temp_name, num_params);
 	name = temp_name;
 	modify_context(context, name, node, FUNCTION_DEFINITION_NODE);

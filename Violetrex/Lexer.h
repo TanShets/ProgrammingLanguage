@@ -19,6 +19,11 @@ typedef struct TOKEN{
 
 void print_token(Token* token)
 {
+	if(token == NULL){
+		printf("Token is NULL\n");
+		return;
+	}
+	
 	if(
 		T_OPERATOR_DETECTOR(token->type) != -1 &&  
 		(token->type == TT_LPAREN || token->type == TT_RPAREN)
