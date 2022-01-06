@@ -3,7 +3,7 @@ function add(a, b, c)
     a + b + c
     a - b - c
     print("Hi man!!!!")
-
+    
     for i = 0 to 10
     {
         for j = 1 to 5
@@ -11,7 +11,7 @@ function add(a, b, c)
             a += 1
         }
     }
-
+    print("The Value of a " + string(a) + " " + string(count))
     return a + b + c
 }
 
@@ -33,5 +33,20 @@ y = string(input("Enter a number: "))
 x = string(string(x) + "gufnjdv")
 
 z = factorial(5)
+
+m = fn(a, b){
+    print("hello friend")
+    print(string(a) + " " + string(b))
+    return a * b
+}
+
 print(x, y)
 print(z)
+print("Hello, my name is Tanish " + string(y))
+
+for i = 1 to 100
+{
+	print("My name is now " + string(i))
+}
+
+print(m(420, 69))

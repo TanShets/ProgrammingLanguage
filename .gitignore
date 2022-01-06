@@ -1,3 +1,4 @@
 *.h.gch
 *.out
+*.exe
 *.sh

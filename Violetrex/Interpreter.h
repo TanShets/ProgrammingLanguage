@@ -525,7 +525,6 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	void** answer = NULL;
     Value* temp_answer;
 	if(node->val->type != TT_EQ){
-        printf("Animals 2\n");
 		line_no = node->val->line_no;
 		col_no = node->val->col_no;
         if(node->leftType == INDEX_NODE){
