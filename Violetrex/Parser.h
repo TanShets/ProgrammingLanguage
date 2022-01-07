@@ -1465,6 +1465,34 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 			(*curr_index)++;
 			Node* right = Parser(tokens, size, curr_index, isVarNode);
 			if(right->nodeType == FUNCTION_DEFINITION_NODE){
+				if(left->nodeType != VAR_NODE){
+					char* name_of_func = NULL;
+					switch(left->nodeType){
+						case FUNCTION_CALL_NODE:{
+							name_of_func = (char*)(left->val->val);
+							break;
+						}
+						case INDEX_NODE:{
+							Node* temp = left;
+							while(temp != NULL && temp->nodeType == INDEX_NODE){
+								temp = (Node*)(temp->left);
+							}
+
+							name_of_func = temp == NULL ? {"foo"} : 
+											(char*)(temp->val->val);
+							break;
+						}
+					}
+					return ErrorNode(
+						make_error(
+							InvalidFunctionNameError(
+								name_of_func, left->nodeType,
+								left->val->line_no, left->val->col_no	
+							),
+							left->val->line_no, left->val->col_no
+						)
+					);
+				}
 				right->else_block_Type = 1;
 				right->else_block = left->val;
 			}

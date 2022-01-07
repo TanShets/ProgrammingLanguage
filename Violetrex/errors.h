@@ -16,6 +16,7 @@
 #define INVALID_ARRAY_OPERATION_ERROR 8
 #define INDEX_ERROR 9
 #define MISMATCH_ERROR 10
+#define INVALID_FUNCTION_NAME_ERROR 11
 
 typedef struct ERROR{
     int errType;
@@ -78,6 +79,10 @@ void printError(Error* error){
         }
         case MISMATCH_ERROR:{
             printf("\nMisMatchError: ");
+            break;
+        }
+        case INVALID_FUNCTION_NAME_ERROR:{
+            printf("\nInvalidFunctionNameError: ");
             break;
         }
         default:{
@@ -192,4 +197,24 @@ Error* MisMatchError(char* var_name, int line_no, int col_no){
     statement[length] = '\0';
     strcat(statement, "'");
     return construct_Error(MISMATCH_ERROR, statement, line_no, col_no);
+}
+
+Error* InvalidFunctionNameError(char* var_name, int nodeType, int line_no, int col_no){
+    char statement[100] = {"Invalid name for function '"};
+    int length = strlen(statement) + strlen(var_name);
+    strncat(statement, var_name, strlen(var_name));
+    statement[length] = '\0';
+    switch(nodeType){
+        case INDEX_NODE:{
+            strcat(statement, "[...]'");
+            break;
+        }
+        case FUNCTION_CALL_NODE:{
+            strcat(statement, "(...)'");
+            break;
+        }
+        default:
+            strcat(statement, "'");
+    }
+    return construct_Error(INVALID_FUNCTION_NAME_ERROR, statement, line_no, col_no);
 }
