@@ -205,11 +205,11 @@ Error* InvalidFunctionNameError(char* var_name, int nodeType, int line_no, int c
     strncat(statement, var_name, strlen(var_name));
     statement[length] = '\0';
     switch(nodeType){
-        case INDEX_NODE:{
+        case 17:{
             strcat(statement, "[...]'");
             break;
         }
-        case FUNCTION_CALL_NODE:{
+        case 14:{
             strcat(statement, "(...)'");
             break;
         }

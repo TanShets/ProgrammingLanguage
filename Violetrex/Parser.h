@@ -1478,7 +1478,8 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 								temp = (Node*)(temp->left);
 							}
 
-							name_of_func = temp == NULL ? {"foo"} : 
+							char foo_name[] = {"foo"};
+							name_of_func = temp == NULL ? foo_name : 
 											(char*)(temp->val->val);
 							break;
 						}
