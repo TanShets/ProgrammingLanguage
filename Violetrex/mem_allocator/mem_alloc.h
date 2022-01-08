@@ -35,6 +35,19 @@ void* mem_alloc(size_t size){
     return new_p;
 }
 
+void mem_free_heap_allocated_pointer(void* ptr, size_t size){
+    int num;
+#ifdef __linux
+    num = munmap(ptr, size) == 0 ? 1 : 0;
+#elif _WIN32
+    num = (int)VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    num = 0;
+#endif
+    char* statement = num ? "Pointer successfully freed\n" : "Failure in freeing pointer\n";
+    printf("%s", statement);
+}
+
 #define HEAP_LIST(x) (x == 0 ? mem_alloc(LIST_ALLOC_BLOCK) : mem_alloc(HEAP_ALLOC_BLOCK))
 void* heap_free_pointer_list = NULL;
 void* heap_alloced_pointer_list = NULL;
@@ -62,6 +75,8 @@ void start_Dynamic_Mem(){
 
 void expand_heap_allocated_heap_list(int flag){
     size_t size, occupied_size, new_size, new_remaining;
+    void* old_ptr;
+    size_t old_size;
     void* ptr;
     heap_block *head, *temp, *fp;
     heap_block *new_head, *new_temp;
@@ -70,7 +85,6 @@ void expand_heap_allocated_heap_list(int flag){
     head = flag ? (heap_block*)heap_free_pointer_list : (heap_block*)heap_alloced_pointer_list;
     size = flag ? HEAP_FREE_POINTER_LIST_SIZE : HEAP_ALLOCED_POINTER_LIST_SIZE;
     occupied_size = size - (flag ? LIST_FREE_BLOCK_SIZE_REMAINING : LIST_ALLOCED_BLOCK_SIZE_REMAINING);
-
     ptr = mem_alloc(size * 2);
     if(ptr == NULL){
         printf("Heap Overflow: Space of size %d bytes not available\n", size * 2);
@@ -108,6 +122,8 @@ void expand_heap_allocated_heap_list(int flag){
         HEAP_ALLOCED_POINTER_LIST_SIZE = new_size;
         LIST_ALLOCED_BLOCK_SIZE_REMAINING = new_remaining;
     }
+
+    mem_free_heap_allocated_pointer(head, size);
 }
 
 void add_to_alloced_list_by_node(heap_block* node){
@@ -297,5 +313,20 @@ void free_pointer(void* ptr){
         fp->next = temp->next;
         temp->next = NULL;
         add_to_free_list_by_node(temp);
+    }
+}
+
+void view_heap_pointer_status(){
+    heap_block* temp;
+    heap_block* heads[2] = {heap_alloced_pointer_list, heap_free_pointer_list};
+    char* lines[2] = {"Alloced blocks: ", "Free blocks: "};
+    for(int i = 0; i < 2; i++){
+        printf("%s\n", lines[i]);
+        temp = heads[i];
+        while(temp != NULL){
+            printf("%p -> %p: %d\n", temp, temp->addr, temp->size);
+            temp = temp->next;
+        }
+        printf("\n\n");
     }
 }

@@ -4,8 +4,16 @@
 
 int main(){
     start_Dynamic_Mem();
-    void* xx = allocate_ptr_for_size(5 * sizeof(int));
-    int df = 0;
-    printf("Pointer assigned: %p %d %p %p\n", xx, df, heap_free_pointer_list, heap_alloced_pointer_list);
+    void* pt1 = allocate_ptr_for_size(sizeof(int));
+    void* pt2 = allocate_ptr_for_size(50004);
+    void* pt3 = allocate_ptr_for_size(sizeof(int));
+    void* pt4 = allocate_ptr_for_size(40000);
+    void* pt5 = allocate_ptr_for_size(20000);
+    view_heap_pointer_status();
+    free_pointer(pt4);
+    view_heap_pointer_status();
+    expand_heap_allocated_heap_list(0);
+    expand_heap_allocated_heap_list(1);
+    view_heap_pointer_status();
     return 0;
 }
