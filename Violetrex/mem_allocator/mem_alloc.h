@@ -12,13 +12,31 @@
 
 #define ALLOC_SIZE_ADJUST(x) (x % 8 == 0 ? x : x + 8 - (x % 8))
 
+size_t SIZE_OF_ADDRESS_IN_CURRENT_MACHINE = sizeof(void*);
+#if (SIZE_OF_ADDRESS_IN_CURRENT_MACHINE == 4)
+#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE int
+#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%d"
+#else
+#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long long int
+#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lld"
+#endif
+
 typedef struct HEAP_BLOCK{
     void* addr;
     size_t size;
     struct HEAP_BLOCK* next;
 }heap_block;
 
+typedef struct {
+    void* ptr;
+    char type;
+} HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE;
+
 void initialize_heap_alloc_hashmap();
+void insert_into_heap_alloced_hashmap(void* key, void* value, int isHead);
+void modify_heap_alloced_hashmap_with_key(void* key, void* new_value, int isHead);
+void delete_key_from_heap_alloced_hashmap(void* key);
+HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE find_from_heap_alloced_hashmap(void* key);
 
 void* mem_alloc(size_t size){
     void* new_p;
@@ -77,9 +95,9 @@ void add_to_garbage_heap_alloced_list(heap_block* node){
 void start_Dynamic_Mem(){
     heap_free_pointer_list = HEAP_LIST(0);
     heap_alloced_pointer_list = HEAP_LIST(0);
+    initialize_heap_alloc_hashmap();
     create_heap_list(heap_free_pointer_list, &LIST_FREE_BLOCK_SIZE_REMAINING, 1);
     create_heap_list(heap_alloced_pointer_list, &LIST_ALLOCED_BLOCK_SIZE_REMAINING, 0);
-    initialize_heap_alloc_hashmap();
 }
 
 void expand_heap_allocated_heap_list(int flag){
@@ -113,6 +131,9 @@ void expand_heap_allocated_heap_list(int flag){
                 new_temp->size = temp->size;
                 if(fp != NULL)
                     fp->next = new_temp;
+                
+                if(!flag && i == 1)
+                    modify_heap_alloced_hashmap_with_key(new_temp->addr, new_temp, new_temp == new_head);
                 new_temp->next = temp->next;
                 if(temp == garbage_heap_alloced_pointer_list)
                     garbage_heap_alloced_pointer_list = new_temp;
@@ -143,6 +164,7 @@ void add_to_alloced_list_by_node(heap_block* node){
         head->addr = node->addr;
         head->size = node->size;
         add_to_garbage_heap_alloced_list(node);
+        modify_heap_alloced_hashmap_with_key(head->addr, head, 1);
         return;
     }
     heap_block *temp = head, *fp = NULL;
@@ -160,10 +182,15 @@ void add_to_alloced_list_by_node(heap_block* node){
         head->next = node;
         node->addr = temp_ptr;
         node->size = temp_size;
+        modify_heap_alloced_hashmap_with_key(head->addr, head, 1);
+        modify_heap_alloced_hashmap_with_key(node->addr, head, 0);
         return;
     }
     fp->next = node;
     node->next = temp;
+    modify_heap_alloced_hashmap_with_key(node->addr, fp, 0);
+    if(temp != NULL)
+        modify_heap_alloced_hashmap_with_key(temp->addr, node, 0);
 }
 
 void add_to_alloced_list_by_pointer(void* ptr, size_t size){
@@ -308,19 +335,28 @@ void free_pointer(void* ptr){
         exit(0);
     }
     heap_block* head1 = (heap_block*)heap_alloced_pointer_list;
-    heap_block *temp = head1, *fp = NULL;
-    while(temp != NULL && ptr > temp->addr){
-        fp = temp;
-        temp = temp->next;
-    }
+    heap_block *temp = NULL, *fp = NULL;
+    // while(temp != NULL && ptr > temp->addr){
+    //     fp = temp;
+    //     temp = temp->next;
+    // }
+
+    HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE struct_val = find_from_heap_alloced_hashmap(ptr);
+    // find from heap alloced hashmap return a struct of a pointer and a char
+    // the pointer indicates the pointer of the node before the node which encloses the ptr
+    // the only exception is the node enclosing ptr being the head, that's where the char value is used to check that
+    // Basically pointer returned -> next is the node we need, this is done to ease the deletion process
+    temp = (heap_block*)struct_val.ptr;
+    int isHead = struct_val.type == 'h';
     
-    if(temp == NULL || temp->addr != ptr){
-        printf("HeapError: Pointer does not exist\n");
+    if(temp == NULL){
+        printf("HeapError: Pointer cannot be freed\n");
         exit(0);
     }
 
     size_t size = temp->size;
-    if(temp == head1){
+    if(temp == head1 && isHead){     //temp == head1){
+        delete_key_from_heap_alloced_hashmap(head1->addr);
         if(head1->next == NULL){
             head1->addr = NULL;
             head1->size = 0;
@@ -328,11 +364,17 @@ void free_pointer(void* ptr){
         else{
             head1->addr = head1->next->addr;
             head1->size = head1->next->size;
+            temp = head1->next;
+            modify_heap_alloced_hashmap_with_key(head1->addr, head1, 1);
             head1->next = head1->next->next;
+            add_to_garbage_heap_alloced_list(temp);
         }
         add_to_free_list_by_pointer(ptr, size);
     }
     else{
+        fp = temp;
+        temp = temp->next;
+        delete_key_from_heap_alloced_hashmap(ptr);
         fp->next = temp->next;
         temp->next = NULL;
         add_to_free_list_by_node(temp);
