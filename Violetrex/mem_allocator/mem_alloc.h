@@ -4,7 +4,6 @@
 #include <memoryapi.h>
 #endif
 
-#include <stdlib.h>
 #include <stdio.h>
 
 #define HEAP_ALLOC_BLOCK 50000
@@ -86,7 +85,7 @@ void expand_heap_allocated_heap_list(int flag){
     void* ptr;
     heap_block *head, *temp, *fp;
     heap_block *new_head, *new_temp;
-    heap_block* heads[2] = {heap_free_pointer_list, heap_alloced_pointer_list};
+    heap_block* heads[3] = {heap_free_pointer_list, heap_alloced_pointer_list, garbage_heap_alloced_pointer_list};
 
     head = flag ? (heap_block*)heap_free_pointer_list : (heap_block*)heap_alloced_pointer_list;
     size = flag ? HEAP_FREE_POINTER_LIST_SIZE : HEAP_ALLOCED_POINTER_LIST_SIZE;
@@ -99,7 +98,7 @@ void expand_heap_allocated_heap_list(int flag){
     new_size = ALLOC_SIZE_ADJUST(size * 2);
     new_remaining = new_size;
     new_head = (heap_block*)ptr;
-    for(int i = 0; i < 2; i++){
+    for(int i = 0; i < 3; i++){
         temp = heads[i];
         fp = NULL;
         while(temp != NULL){
@@ -111,6 +110,8 @@ void expand_heap_allocated_heap_list(int flag){
                 if(fp != NULL)
                     fp->next = new_temp;
                 new_temp->next = temp->next;
+                if(temp == garbage_heap_alloced_pointer_list)
+                    garbage_heap_alloced_pointer_list = new_temp;
                 temp = new_temp;
             }
             fp = temp;

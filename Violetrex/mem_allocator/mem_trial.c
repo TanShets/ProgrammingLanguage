@@ -1,6 +1,5 @@
 #include "mem_alloc.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 int main(){
     start_Dynamic_Mem();
@@ -15,5 +14,6 @@ int main(){
     expand_heap_allocated_heap_list(0);
     expand_heap_allocated_heap_list(1);
     view_heap_pointer_status();
+    // printf("Size: %d", new_sizeof(char));
     return 0;
 }
