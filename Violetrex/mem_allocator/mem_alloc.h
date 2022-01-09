@@ -51,6 +51,7 @@ void mem_free_heap_allocated_pointer(void* ptr, size_t size){
 #define HEAP_LIST(x) (x == 0 ? mem_alloc(LIST_ALLOC_BLOCK) : mem_alloc(HEAP_ALLOC_BLOCK))
 void* heap_free_pointer_list = NULL;
 void* heap_alloced_pointer_list = NULL;
+heap_block* garbage_heap_alloced_pointer_list = NULL;
 
 size_t HEAP_FREE_POINTER_LIST_SIZE = LIST_ALLOC_BLOCK;
 size_t HEAP_ALLOCED_POINTER_LIST_SIZE = LIST_ALLOC_BLOCK;
@@ -64,6 +65,11 @@ void create_heap_list(void* ptr, size_t* rem_size_ptr, int flag){
     head->size = flag ? HEAP_ALLOC_BLOCK : 0;
     head->next = NULL;
     *rem_size_ptr -= sizeof(heap_block);
+}
+
+void add_to_garbage_heap_alloced_list(heap_block* node){
+    node->addr = NULL, node->size = 0, node->next = garbage_heap_alloced_pointer_list;
+    garbage_heap_alloced_pointer_list = node;
 }
 
 void start_Dynamic_Mem(){
@@ -131,6 +137,7 @@ void add_to_alloced_list_by_node(heap_block* node){
     if(head->addr == NULL){
         head->addr = node->addr;
         head->size = node->size;
+        add_to_garbage_heap_alloced_list(node);
         return;
     }
     heap_block *temp = head, *fp = NULL;
@@ -155,10 +162,13 @@ void add_to_alloced_list_by_node(heap_block* node){
 }
 
 void add_to_alloced_list_by_pointer(void* ptr, size_t size){
-    if(LIST_ALLOCED_BLOCK_SIZE_REMAINING < sizeof(heap_block))
+    if(garbage_heap_alloced_pointer_list == NULL && LIST_ALLOCED_BLOCK_SIZE_REMAINING < sizeof(heap_block))
         expand_heap_allocated_heap_list(0);
     heap_block* new_ptr = (heap_block*)(heap_alloced_pointer_list + HEAP_ALLOCED_POINTER_LIST_SIZE - LIST_ALLOCED_BLOCK_SIZE_REMAINING);
-    LIST_ALLOCED_BLOCK_SIZE_REMAINING -= sizeof(heap_block);
+    int isNull = garbage_heap_alloced_pointer_list == NULL;
+    new_ptr = isNull ? new_ptr : garbage_heap_alloced_pointer_list;
+    LIST_ALLOCED_BLOCK_SIZE_REMAINING -= isNull ? sizeof(heap_block) : 0;
+    garbage_heap_alloced_pointer_list = isNull ? NULL : garbage_heap_alloced_pointer_list->next;
     new_ptr->addr = ptr;
     new_ptr->size = size;
     new_ptr->next = NULL;
@@ -232,11 +242,14 @@ void add_to_free_list_by_node(heap_block* node){
     }
 
     if(temp == head){
-        if(head->addr + head->size == node->addr)
+        if(head->addr + head->size == node->addr){
             head->size += node->size;
+            add_to_garbage_heap_alloced_list(node);
+        }
         else if(node->addr + node->size == head->addr){
             head->addr = node->addr;
             head->size += node->size;
+            add_to_garbage_heap_alloced_list(node);
         }
         else if(head->addr < node->addr){
             node->next = head->next;
@@ -256,10 +269,12 @@ void add_to_free_list_by_node(heap_block* node){
     else{
         if(fp->addr + fp->size == node->addr){
             fp->size += node->size;
+            add_to_garbage_heap_alloced_list(node);
         }
         else if(temp != NULL && node->addr + node->size == temp->addr){
             temp->size += node->size;
             temp->addr = node->addr;
+            add_to_garbage_heap_alloced_list(node);
         }
         else{
             node->next = fp->next;
@@ -269,10 +284,13 @@ void add_to_free_list_by_node(heap_block* node){
 }
 
 void add_to_free_list_by_pointer(void* ptr, size_t size){
-    if(LIST_FREE_BLOCK_SIZE_REMAINING < sizeof(heap_block))
+    if(garbage_heap_alloced_pointer_list == NULL && LIST_FREE_BLOCK_SIZE_REMAINING < sizeof(heap_block))
         expand_heap_allocated_heap_list(1);
     heap_block* new_ptr = (heap_block*)(heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
-    LIST_FREE_BLOCK_SIZE_REMAINING -= sizeof(heap_block);
+    int isNull = garbage_heap_alloced_pointer_list == NULL;
+    new_ptr = isNull ? new_ptr : garbage_heap_alloced_pointer_list;
+    LIST_FREE_BLOCK_SIZE_REMAINING -= isNull ? sizeof(heap_block) : 0;
+    garbage_heap_alloced_pointer_list = isNull ? NULL : garbage_heap_alloced_pointer_list->next;
     new_ptr->addr = ptr;
     new_ptr->size = size;
     new_ptr->next = NULL;
