@@ -1,3 +1,4 @@
+#pragma once
 #ifdef __linux
 #include <sys/mman.h>
 #elif _WIN32
@@ -16,6 +17,8 @@ typedef struct HEAP_BLOCK{
     size_t size;
     struct HEAP_BLOCK* next;
 }heap_block;
+
+void initialize_heap_alloc_hashmap();
 
 void* mem_alloc(size_t size){
     void* new_p;
@@ -76,6 +79,7 @@ void start_Dynamic_Mem(){
     heap_alloced_pointer_list = HEAP_LIST(0);
     create_heap_list(heap_free_pointer_list, &LIST_FREE_BLOCK_SIZE_REMAINING, 1);
     create_heap_list(heap_alloced_pointer_list, &LIST_ALLOCED_BLOCK_SIZE_REMAINING, 0);
+    initialize_heap_alloc_hashmap();
 }
 
 void expand_heap_allocated_heap_list(int flag){

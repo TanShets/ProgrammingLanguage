@@ -1,4 +1,4 @@
-#include "mem_alloc.h"
+#include "mem_lib.h"
 #include <stdio.h>
 
 int main(){
@@ -14,6 +14,13 @@ int main(){
     expand_heap_allocated_heap_list(0);
     expand_heap_allocated_heap_list(1);
     view_heap_pointer_status();
-    // printf("Size: %d", new_sizeof(char));
+    insert_into_heap_alloced_hashmap(pt1, pt2);
+    insert_into_heap_alloced_hashmap(pt3, pt4);
+    expand_heap_alloced_hashmap();
+    void* ptx = find_from_heap_alloced_hashmap(pt1);
+    void* pty = find_from_heap_alloced_hashmap(pt3);
+    printf("Outcome %d %d\n", ptx == pt2, pty == pt4);
+    delete_key_from_heap_alloced_hashmap(pt1);
+    delete_key_from_heap_alloced_hashmap(pt3);
     return 0;
 }
