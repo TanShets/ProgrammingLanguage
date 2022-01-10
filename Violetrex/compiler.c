@@ -1,16 +1,18 @@
 #include "value.h"
 #include "Interpreter.h"
+#include "mem_allocator/mem_lib.h"
 
 #define DEFAULT_NO_OF_NODES 5
 
 int main(int argc, char** argv)
 {
-    char FILE_LINES[SIZE];
+    // char FILE_LINES[SIZE];
+    start_Dynamic_Mem();
     int filesize = SIZE;
     int current_file_size = 0;
 	int line_no = 1, col_no = 1;
     char* filename = argv[1];
-    char* line = FILE_LINES;
+    char* line = (char*)allocate_ptr_array(filesize, sizeof(char));
     if(strcmp(&filename[strlen(filename) - 4], ".vrx") != 0)
     {
         printf("File format error: Not a .vrx file\n");
@@ -46,13 +48,16 @@ int main(int argc, char** argv)
     // printf("Flag4 %d\n", t_size);
     // if(tokens != NULL)
     // print_token_array(tokens, curr_size);
+    // view_heap_pointer_status();
+    // view_heap_alloced_hashmap_status();
     // return 0;
     // else
     // 	printf("\nIt was null lol\n");
     //printf("\n\n\n\n");
     curr_index = 0;
     no_of_nodes = 0, max_no_of_nodes = DEFAULT_NO_OF_NODES;
-    nodes = (Node**)calloc(max_no_of_nodes, sizeof(Node*));
+    // nodes = (Node**)calloc(max_no_of_nodes, sizeof(Node*));
+    nodes = (Node**)allocate_ptr_array(max_no_of_nodes, sizeof(Node*));
     while(curr_index < curr_size && curr_index != TT_EOF){
         node = Parser(tokens, curr_size, &curr_index, 0);
         nodes[no_of_nodes] = node;

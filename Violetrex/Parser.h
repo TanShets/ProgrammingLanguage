@@ -38,7 +38,8 @@ typedef struct NODE{
 }Node;
 
 Node* construct_Node(Token* val, int nodeType){
-	Node* node = (Node*)malloc(sizeof(Node));
+	// Node* node = (Node*)malloc(sizeof(Node));
+	Node* node = (Node*)allocate_ptr_for_size(sizeof(Node));
 	node->nodeType = nodeType;
 	node->val = val;
 	node->valType = val->type;
@@ -236,9 +237,14 @@ void expand_arrays(
 ){
 	int old_no_of_blocks = *no_of_blocks;
 	*no_of_blocks *= 2;
-	*statements = (Node**)realloc(*statements, *no_of_blocks * sizeof(Node*));
-	*blocks = (Node***)realloc(*blocks, *no_of_blocks * sizeof(Node**));
-	*block_lengths = (int*)realloc(*block_lengths, *no_of_blocks * sizeof(int));
+	// *statements = (Node**)realloc(*statements, *no_of_blocks * sizeof(Node*));
+	// *blocks = (Node***)realloc(*blocks, *no_of_blocks * sizeof(Node**));
+	// *block_lengths = (int*)realloc(*block_lengths, *no_of_blocks * sizeof(int));
+	*statements = (Node**)reallocate_heap_alloced_ptr(*statements, *no_of_blocks * sizeof(Node*));
+	*blocks = (Node***)reallocate_heap_alloced_ptr(*blocks, *no_of_blocks * sizeof(Node**));
+	*block_lengths = (int*)reallocate_heap_alloced_ptr(*block_lengths, *no_of_blocks * sizeof(int));
+	
+	
 	// Node** new_statements = (Node**)calloc(*no_of_blocks, sizeof(Node*));
 	// Node*** new_blocks = (Node***)calloc(*no_of_blocks, sizeof(Node**));
 	// int* new_block_lengths = (int*)calloc(*no_of_blocks, sizeof(int));
@@ -262,7 +268,9 @@ void expand_arrays(
 void expand_block(Node*** block, int* block_size){
 	int old_block_size = *block_size;
 	*block_size *= 2;
-	*block = (Node**)realloc(*block, *block_size * sizeof(Node*));
+	// *block = (Node**)realloc(*block, *block_size * sizeof(Node*));
+	*block = (Node**)reallocate_heap_alloced_ptr(*block, *block_size * sizeof(Node*));
+
 	// Node** old_block = *block;
 	// Node** new_block = (Node**)calloc(*block_size, sizeof(Node*));
 	// memcpy(new_block, *block, old_block_size * sizeof(Node*));
@@ -285,7 +293,8 @@ Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation
 Node* make_LoopNode(Token** tokens, int size, int* curr_index){
 	int max_block_size = 10, i, block_size = 0;
 	Token* token_val = tokens[*curr_index];
-	Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	// Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	Node** block = (Node**)allocate_ptr_array(max_block_size, sizeof(Node*));
 	Node* condition = NULL;
 	if(tokens[*curr_index]->type == TT_WHILE){
 		(*curr_index)++;
@@ -354,9 +363,11 @@ Node* make_LoopNode(Token** tokens, int size, int* curr_index){
 			change_node = VarAssignNode(change_var, change_eq, change_val, change_var->type, change_val->nodeType, 1);
 		}
 		else{
-			change_var = (Token*)malloc(sizeof(Token));
+			// change_var = (Token*)malloc(sizeof(Token));
+			change_var = (Token*)allocate_ptr_for_size(sizeof(Token));
 			change_var->type = TT_INT;
-			int* new_val_for_change = (int*)malloc(sizeof(int));
+			// int* new_val_for_change = (int*)malloc(sizeof(int));
+			int* new_val_for_change = (int*)allocate_ptr_for_size(sizeof(int));
 			*new_val_for_change = 1;
 			change_var->val = new_val_for_change;
 			change_node = NumNode(change_var);
@@ -456,7 +467,8 @@ Node* make_FunctionDefinitionNode(Token** tokens, int size, int* curr_index){
 	}
 
 	(*curr_index)++;
-	parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	// parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	parameters = (Node**)allocate_ptr_array(max_parameter_size, sizeof(Node*));
 	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_RPAREN){
 		parameters[no_of_parameters] = value(tokens, size, curr_index);
 		no_of_parameters++;
@@ -529,7 +541,8 @@ Node* make_FunctionDefinitionNode(Token** tokens, int size, int* curr_index){
 	(*curr_index)++;
 
 	int no_of_blocks = 0, max_block_size = 5;
-	Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	// Node** block = (Node**)calloc(max_block_size, sizeof(Node*));
+	Node** block = (Node**)allocate_ptr_array(max_block_size, sizeof(Node*));
 	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_CLOSE){
 		block[no_of_blocks] = Parser(tokens, size, curr_index, 0);
 		if(block[no_of_blocks]->nodeType == ERROR_NODE)
@@ -587,7 +600,8 @@ Node* make_ReturnNode(Token** tokens, int size, int* curr_index){
 	if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_CLOSE)
 		val = Parser(tokens, size, curr_index, 1);
 	else{
-		Token* token = (Token*)malloc(sizeof(Token));
+		// Token* token = (Token*)malloc(sizeof(Token));
+		Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 		token->type = TT_NULL;
 		char* word = {"null"};
 		token->val = word;
@@ -624,8 +638,10 @@ Node* make_ArrayNode(Token** tokens, int size, int* curr_index){
 	(*curr_index)++;
 	int max_size_of_array = 10, current_size = 0;
 	Node **keys, **values;
-	keys = (Node**)calloc(max_size_of_array, sizeof(Node*));
-	values = (Node**)calloc(max_size_of_array, sizeof(Node*));
+	// keys = (Node**)calloc(max_size_of_array, sizeof(Node*));
+	// values = (Node**)calloc(max_size_of_array, sizeof(Node*));
+	keys = (Node**)allocate_ptr_array(max_size_of_array, sizeof(Node*));
+	values = (Node**)allocate_ptr_array(max_size_of_array, sizeof(Node*));
 	Node *temp_key, *temp_val;
 	int isFinished = 0;
 
@@ -745,7 +761,8 @@ Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index, int isVar
 	(*curr_index)++;
 	int max_parameter_size = DEFAULT_NO_OF_FUNCTION_PARAMETERS;
 	int no_of_parameters = 0;
-	Node** parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	// Node** parameters = (Node**)calloc(max_parameter_size, sizeof(Node*));
+	Node** parameters = (Node**)allocate_ptr_array(max_parameter_size, sizeof(Node*));
 	int temp_type, isFinished = 0;
 
 	while(
@@ -852,7 +869,8 @@ Node* make_IndexNode(Node* starter, Token** tokens, int size, int* curr_index){
 	int count = 0;
 	int max_no_of_indices = 10;
 	int isFinished = 0;
-	Node** indices = (Node**)calloc(max_no_of_indices, sizeof(Node*));
+	// Node** indices = (Node**)calloc(max_no_of_indices, sizeof(Node*));
+	Node** indices = (Node**)allocate_ptr_array(max_no_of_indices, sizeof(Node*));
 	Node* temp_node;
 	while(
 		!IS_EOA(*curr_index, size) && 
@@ -1047,10 +1065,15 @@ Node* value(Token** tokens, int size, int* curr_index)
 			Token* val_token = tokens[*curr_index];
 			int no_of_blocks = 4, count = 0, flag = 0;
 			int inner_block_count = 0;
-			Node** statements = (Node**)calloc(no_of_blocks, sizeof(Node*));
-			Node*** blocks = (Node***)calloc(no_of_blocks, sizeof(Node**));
-			int* block_lengths = (int*)calloc(no_of_blocks, sizeof(int));
-			memset(block_lengths, 0, no_of_blocks * sizeof(int));
+			// Node** statements = (Node**)calloc(no_of_blocks, sizeof(Node*));
+			// Node*** blocks = (Node***)calloc(no_of_blocks, sizeof(Node**));
+			// int* block_lengths = (int*)calloc(no_of_blocks, sizeof(int));
+
+			Node** statements = (Node**)allocate_ptr_array(no_of_blocks, sizeof(Node*));
+			Node*** blocks = (Node***)allocate_ptr_array(no_of_blocks, sizeof(Node**));
+			int* block_lengths = (int*)allocate_ptr_array(no_of_blocks, sizeof(int));
+			// memset(block_lengths, 0, no_of_blocks * sizeof(int));
+			set_heap_alloced_memory(block_lengths, 0, no_of_blocks * sizeof(int));
 			Node* temp_statement;
 			Node** temp_block;
 			Node** else_block = NULL;
@@ -1126,7 +1149,8 @@ Node* value(Token** tokens, int size, int* curr_index)
 				else
 					(*curr_index)++;
 				
-				temp_block = (Node**)calloc(inner_block_count, sizeof(Node*));
+				// temp_block = (Node**)calloc(inner_block_count, sizeof(Node*));
+				temp_block = (Node**)allocate_ptr_array(inner_block_count, sizeof(Node*));
 				while(
 					*curr_index != TT_EOF && *curr_index < size && 
 					tokens[*curr_index]->type != TT_BLOCK_CLOSE
@@ -1196,7 +1220,8 @@ Node* value(Token** tokens, int size, int* curr_index)
 				
 				inner_block_count = 4;
 				else_block_length = 0;
-				temp_block = (Node**)calloc(inner_block_count, sizeof(Node*));
+				// temp_block = (Node**)calloc(inner_block_count, sizeof(Node*));
+				temp_block = (Node**)allocate_ptr_array(inner_block_count, sizeof(Node*));
 				while(
 					*curr_index != TT_EOF && *curr_index < size && 
 					tokens[*curr_index]->type != TT_BLOCK_CLOSE

@@ -120,3 +120,12 @@ void modify_heap_alloced_hashmap_with_key(void* key, void* new_value, int isHead
         HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY[index] = isHead ? 'h' : 'm';
     }
 }
+
+void view_heap_alloced_hashmap_status(){
+    for(int i = 0; i < HEAP_ALLOCED_HASHMAP_CAPACITY; i++){
+        if(HEAP_ALLOCED_HASHMAP_KEY_ARRAY[i] != NULL && HEAP_ALLOCED_HASHMAP_KEY_ARRAY[i] != HEAP_ALLOCED_HASHMAP_KEY_ARRAY){
+        printf("%p-> %p : %c\n", HEAP_ALLOCED_HASHMAP_KEY_ARRAY[i], HEAP_ALLOCED_HASHMAP_VALUE_ARRAY[i], HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY[i]);
+        }
+    }
+    printf("\n");
+}

@@ -41,7 +41,7 @@ HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE find_from_heap_alloced_hashmap(void* key)
 void* mem_alloc(size_t size){
     void* new_p;
     size_t x_size = ALLOC_SIZE_ADJUST(size);
-    printf("Size assigned: %d %d\n", x_size, size);
+    // printf("Size assigned: %d %d\n", x_size, size);
 #ifdef __linux
     new_p = mmap(
         NULL, x_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,
@@ -50,7 +50,7 @@ void* mem_alloc(size_t size){
     new_p = VirtualAlloc(NULL, x_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #else
     new_p = NULL;
-    printf("Right here\n");
+    // printf("Right here\n");
 #endif
     return new_p;
 }
@@ -65,7 +65,7 @@ void mem_free_heap_allocated_pointer(void* ptr, size_t size){
     num = 0;
 #endif
     char* statement = num ? "Pointer successfully freed\n" : "Failure in freeing pointer\n";
-    printf("%s", statement);
+    // printf("%s", statement);
 }
 
 #define HEAP_LIST(x) (x == 0 ? mem_alloc(LIST_ALLOC_BLOCK) : mem_alloc(HEAP_ALLOC_BLOCK))
@@ -108,7 +108,6 @@ void expand_heap_allocated_heap_list(int flag){
     heap_block *head, *temp, *fp;
     heap_block *new_head, *new_temp;
     heap_block* heads[3] = {heap_free_pointer_list, heap_alloced_pointer_list, garbage_heap_alloced_pointer_list};
-
     head = flag ? (heap_block*)heap_free_pointer_list : (heap_block*)heap_alloced_pointer_list;
     size = flag ? HEAP_FREE_POINTER_LIST_SIZE : HEAP_ALLOCED_POINTER_LIST_SIZE;
     occupied_size = size - (flag ? LIST_FREE_BLOCK_SIZE_REMAINING : LIST_ALLOCED_BLOCK_SIZE_REMAINING);
@@ -120,20 +119,27 @@ void expand_heap_allocated_heap_list(int flag){
     new_size = ALLOC_SIZE_ADJUST(size * 2);
     new_remaining = new_size;
     new_head = (heap_block*)ptr;
+    int count = 0;
+    heap_block block_temp;
     for(int i = 0; i < 3; i++){
         temp = heads[i];
         fp = NULL;
         while(temp != NULL){
             if(temp - head < occupied_size && temp >= head){
-                new_temp = new_head + new_size - new_remaining;
+                new_temp = (heap_block*)(new_head + count);
+                // block_temp = *new_temp;
                 new_remaining -= sizeof(heap_block);
+                count++;
+                // new_temp->size = 0;
                 new_temp->addr = temp->addr;
                 new_temp->size = temp->size;
                 if(fp != NULL)
                     fp->next = new_temp;
-                
-                if(!flag && i == 1)
-                    modify_heap_alloced_hashmap_with_key(new_temp->addr, new_temp, new_temp == new_head);
+                if(!flag && i == 1){
+                    modify_heap_alloced_hashmap_with_key(
+                        new_temp->addr, new_temp == new_head ? new_head : fp, new_temp == new_head
+                    );
+                }
                 new_temp->next = temp->next;
                 if(temp == garbage_heap_alloced_pointer_list)
                     garbage_heap_alloced_pointer_list = new_temp;
@@ -184,6 +190,10 @@ void add_to_alloced_list_by_node(heap_block* node){
         node->size = temp_size;
         modify_heap_alloced_hashmap_with_key(head->addr, head, 1);
         modify_heap_alloced_hashmap_with_key(node->addr, head, 0);
+        if(node->next != NULL){
+            temp = node->next;
+            modify_heap_alloced_hashmap_with_key(temp->addr, node, 0);
+        }
         return;
     }
     fp->next = node;
@@ -237,7 +247,9 @@ void* allocate_ptr_for_size(size_t size){
         return answer;
     }
     else{
-        if(LIST_FREE_BLOCK_SIZE_REMAINING < sizeof(heap_block)){}
+        if(LIST_FREE_BLOCK_SIZE_REMAINING < sizeof(heap_block)){
+            expand_heap_allocated_heap_list(1);
+        }
 
         size_t new_block_size = HEAP_ALLOC_BLOCK;
         while(size >= new_block_size)
@@ -262,6 +274,10 @@ void* allocate_ptr_for_size(size_t size){
         add_to_alloced_list_by_pointer(answer, ALLOC_SIZE_ADJUST(size));
         return answer;
     }
+}
+
+void* allocate_ptr_array(int count, size_t element_size){
+    return allocate_ptr_for_size(count * element_size);
 }
 
 void add_to_free_list_by_node(heap_block* node){
@@ -393,5 +409,51 @@ void view_heap_pointer_status(){
             temp = temp->next;
         }
         printf("\n\n");
+    }
+}
+
+void copy_heap_alloced_memory(void* des, void* src, size_t size){
+    char *des_char = (char*)des, *src_char = (char*)src;
+    for(size_t i = 0; i < size; i++)
+        des_char[i] = src_char[i];
+}
+
+void move_heap_alloced_memory(void* des, void* src, size_t size){
+    char *des_char = (char*)des, *src_char = (char*)src;
+    // printf("Moving... %d\n", size);
+    for(size_t i = 0; i < size; i++){
+        // printf("Step %d\n", i);
+        des_char[i] = src_char[i];
+        src_char[i] = '\0';
+    }
+}
+
+void* reallocate_heap_alloced_ptr(void* ptr, size_t new_size){
+    HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE result = find_from_heap_alloced_hashmap(ptr);
+    if(result.ptr == NULL){
+        printf("HeapError: Given pointer cannot be reallocated\n");
+        exit(0);
+    }
+    void* new_ptr = allocate_ptr_for_size(new_size);
+    heap_block* node = (heap_block*)result.ptr;
+    node = result.type == 'h' ? node : node->next;
+    size_t size = node->size;
+    // printf("Mem: %p %p\n", ptr, node);
+    move_heap_alloced_memory(new_ptr, ptr, size);
+    // printf("Made it here\n");
+    free_pointer(ptr);
+    // printf("%p successfully reallocated to %p\n", ptr, new_ptr);
+    return new_ptr;
+}
+
+void set_heap_alloced_memory(void* ptr, int val, size_t size){
+    if(ptr == NULL)
+        return;
+    size_t length = size;
+    char* c_ptr = (char*)ptr;
+    while(length > 0){
+        *c_ptr = val;
+        c_ptr++;
+        length--;
     }
 }

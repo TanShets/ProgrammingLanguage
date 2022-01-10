@@ -49,7 +49,8 @@ void printValue(Value* value){
 }
 
 Interpreter* construct_Interpreter(Value** values, int no_of_values, int isBroken){
-    Interpreter* interpreter = (Interpreter*)malloc(sizeof(Interpreter));
+    // Interpreter* interpreter = (Interpreter*)malloc(sizeof(Interpreter));
+    Interpreter* interpreter = (Interpreter*)allocate_ptr_for_size(sizeof(Interpreter));
     interpreter->values = values;
     interpreter->no_of_values = no_of_values;
     interpreter->isBroken = isBroken;
@@ -59,7 +60,8 @@ Interpreter* construct_Interpreter(Value** values, int no_of_values, int isBroke
 void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
     int old_no_of_values = *no_of_values;
     *no_of_values = 2 * new_no_of_values;
-    *values = (Value**)realloc(*values, *no_of_values * sizeof(Value*));
+    // *values = (Value**)realloc(*values, *no_of_values * sizeof(Value*));
+    *values = (Value**)reallocate_heap_alloced_ptr(*values, *no_of_values * sizeof(Value*));
     // Value** new_values = (Value**)calloc(*no_of_values, sizeof(Value*));
     // memcpy(new_values, *values, old_no_of_values * sizeof(Value*));
     // Value** temp = *values;
@@ -146,11 +148,15 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
         }
         else{
             *no_of_values = 1;
-            values = (Value**)malloc(sizeof(Value*));
-            Token* token = (Token*)malloc(sizeof(Token));
-            memcpy(token, node->val, sizeof(Token));
+            // values = (Value**)malloc(sizeof(Value*));
+            values = (Value**)allocate_ptr_for_size(sizeof(Value*));
+            // Token* token = (Token*)malloc(sizeof(Token));
+            Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
+            // memcpy(token, node->val, sizeof(Token));
+            copy_heap_alloced_memory(token, node->val, sizeof(Token));
             token->type = TT_NULL;
-            token->val = (int*)malloc(sizeof(int));
+            // token->val = (int*)malloc(sizeof(int));
+            token->val = (int*)allocate_ptr_for_size(sizeof(int));
             *((int*)token->val) = 0;
             *values = construct_Value(token);
             return values;
@@ -300,7 +306,8 @@ Value* getIndexValue(Node* node, Context* context, int* isNode){
     int count = node->rightType;
 
     Value *temp_key, *temp_val;
-    Value** values = count > 1 ? (Value**)calloc(count, sizeof(Value*)) : NULL;
+    // Value** values = count > 1 ? (Value**)calloc(count, sizeof(Value*)) : NULL;
+    Value** values = count > 1 ? (Value**)allocate_ptr_array(count, sizeof(Value*)) : NULL;
     for(int i = 0; i < count; i++){
         temp_key = viewNode(indices[i], context, isNode);
         if(temp_key->valType == TT_ERROR)
@@ -316,7 +323,8 @@ Value* getIndexValue(Node* node, Context* context, int* isNode){
     }
 
     if(count > 1){
-        temp_val = (Value*)malloc(sizeof(Value));
+        // temp_val = (Value*)malloc(sizeof(Value));
+        temp_val = (Value*)allocate_ptr_for_size(sizeof(Value));
         temp_val->valType = TT_ARRAY;
         temp_val->line_no = values[0]->line_no;
         temp_val->col_no = values[1]->col_no;
@@ -328,7 +336,8 @@ Value* getIndexValue(Node* node, Context* context, int* isNode){
 }
 
 Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
-    Value** values = (Value**)calloc(DEFAULT_NO_OF_VALUES, sizeof(Value*));
+    // Value** values = (Value**)calloc(DEFAULT_NO_OF_VALUES, sizeof(Value*));
+    Value** values = (Value**)allocate_ptr_array(DEFAULT_NO_OF_VALUES, sizeof(Value*));
     int max_no_of_values = DEFAULT_NO_OF_VALUES;
     int i, hasStarted = 0;
     *no_of_values = 0;
@@ -344,7 +353,8 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
             if(*no_of_values + temp_interpreter->no_of_values >= max_no_of_values)
                 expand_Values(&values, &max_no_of_values, *no_of_values + temp_interpreter->no_of_values);
             
-            memcpy(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
+            // memcpy(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
+            copy_heap_alloced_memory(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
             *no_of_values += temp_interpreter->no_of_values;
             if(isNode[0] < 0){
                 isNode[0] *= -1;
@@ -394,7 +404,8 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
             if(*no_of_values + temp_interpreter->no_of_values >= max_no_of_values)
                 expand_Values(&values, &max_no_of_values, *no_of_values + temp_interpreter->no_of_values);
             
-            memcpy(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
+            // memcpy(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
+            copy_heap_alloced_memory(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
             *no_of_values += temp_interpreter->no_of_values;
             temp_value = viewNode(condition, context, isNode);
             if(isNode[0] < 0){
@@ -423,12 +434,14 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
     Value* tempo_vals = default_function_control(node, context, isNode);
     if(tempo_vals != NULL)
         return tempo_vals;
-    Value** values = (Value**)malloc(sizeof(Value*));
+    // Value** values = (Value**)malloc(sizeof(Value*));
+    Value** values = (Value**)allocate_ptr_for_size(sizeof(Value*));
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     char* key = (char*)(((Token*)node->val)->val);
     char* num = INT_TO_STR(no_of_parameters);
-    char* temp_key = (char*)calloc(strlen(key) + strlen(num) + 5, sizeof(char));
+    // char* temp_key = (char*)calloc(strlen(key) + strlen(num) + 5, sizeof(char));
+    char* temp_key = (char*)allocate_ptr_array(strlen(key) + strlen(num) + 5, sizeof(char));
     strncpy(temp_key, key, strlen(key));
     strcat(temp_key, num);
     char* old_key = key;
@@ -473,7 +486,8 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
         return *(temp_interpreter->values);
     }
     else{
-        Token* token = (Token*)malloc(sizeof(Token));
+        // Token* token = (Token*)malloc(sizeof(Token));
+        Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
         token->type = TT_NULL;
         char* word = {"null"};
         token->val = word, token->line_no = ((Token*)node->val)->line_no;
@@ -529,8 +543,10 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 		col_no = node->val->col_no;
         if(node->leftType == INDEX_NODE){
             temp_answer = viewNode(starter, context, isNode);
-            answer = (void**)calloc(2, sizeof(void*));
-            answer[1] = (int*)malloc(sizeof(int));
+            // answer = (void**)calloc(2, sizeof(void*));
+            answer = (void**)allocate_ptr_array(2, sizeof(void*));
+            // answer[1] = (int*)malloc(sizeof(int));
+            answer[1] = (int*)allocate_ptr_for_size(sizeof(int));
             *((int*)answer[1]) = temp_answer->valType;
             answer[0] = temp_answer->num;
         }
@@ -541,7 +557,8 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
             answer[1] != NULL && *((int*)answer[1]) != TT_ERROR && 
             *((int*)answer[1]) != TT_ARRAY
         ){
-			token = (Token*)malloc(sizeof(Token));
+			// token = (Token*)malloc(sizeof(Token));
+            token = (Token*)allocate_ptr_for_size(sizeof(Token));
 			token->type = *((int*)answer[1]);
 			token->val = answer[0];
 			token->line_no = node->val->line_no, token->col_no = node->val->col_no;
@@ -626,10 +643,12 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
                     )
                 );
             }
-            Token* token = (Token*)malloc(sizeof(Token));
+            // Token* token = (Token*)malloc(sizeof(Token));
+            Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
             token->type = TT_INT;
             token->line_no = val->line_no, token->col_no = val->col_no;
-            token->val = malloc(sizeof(int));
+            // token->val = malloc(sizeof(int));
+            token->val = allocate_ptr_for_size(sizeof(int));
             temp_key = construct_Value(token);
             Value* temp_val;
             for(i = 0; i < count; i++){
@@ -653,10 +672,13 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	if(node->isVarNode != 0){
 		return val;
     }
-	token = (Token*)malloc(sizeof(Token));
-	memcpy(token, node->val, sizeof(Token));
+	// token = (Token*)malloc(sizeof(Token));
+    token = (Token*)allocate_ptr_for_size(sizeof(Token));
+	// memcpy(token, node->val, sizeof(Token));
+    copy_heap_alloced_memory(token, node->val, sizeof(Token));
 	token->type = TT_NULL;
-	token->val = (char*)calloc(5, sizeof(char));
+	// token->val = (char*)calloc(5, sizeof(char));
+    token->val = (char*)allocate_ptr_array(5, sizeof(char));
 	strcpy((char*)(token->val), "null");
 	return construct_Value(token);
 }
@@ -666,7 +688,8 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
     int no_of_values = 1, total_no_of_values = 0;
     int size = DEFAULT_NO_OF_VALUES;
     int i = 0;
-    values = (Value**)calloc(size, sizeof(Value*));
+    // values = (Value**)calloc(size, sizeof(Value*));
+    values = (Value**)allocate_ptr_array(size, sizeof(Value*));
     int breaker = 0;
     for(i = 0; i < no_of_nodes; i++){
         no_of_values = 1;
@@ -694,21 +717,25 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
                 }
                 else{
                     isNode[0] *= -1;
-                    token = (Token*)malloc(sizeof(Token));
+                    // token = (Token*)malloc(sizeof(Token));
+                    token = (Token*)allocate_ptr_for_size(sizeof(Token));
                     token->type = TT_NULL, token->line_no = nodes[i]->val->line_no;
                     token->col_no = nodes[i]->val->col_no;
-                    token->val = (char*)calloc(5, sizeof(char));
+                    // token->val = (char*)calloc(5, sizeof(char));
+                    token->val = (char*)allocate_ptr_array(5, sizeof(char));
                     strcpy((char*)(token->val), "null");
                 }
                 no_of_values = 1;
-                temp_values = (Value**)malloc(sizeof(Value*));
+                // temp_values = (Value**)malloc(sizeof(Value*));
+                temp_values = (Value**)allocate_ptr_for_size(sizeof(Value*));
                 *temp_values = construct_Value(token);
                 break;
             }
             case RETURN_NODE:{
                 breaker++;
                 Token* token = NULL;
-                temp_values = (Value**)malloc(sizeof(Value*));
+                // temp_values = (Value**)malloc(sizeof(Value*));
+                temp_values = (Value**)allocate_ptr_for_size(sizeof(Value*));
                 if(isNode[1] == 0){
                     no_of_values = 1;
                     token = make_error(
@@ -730,7 +757,8 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
             }
             default:{
                 no_of_values = 1;
-                temp_values = (Value**)malloc(sizeof(Value*));
+                // temp_values = (Value**)malloc(sizeof(Value*));
+                temp_values = (Value**)allocate_ptr_for_size(sizeof(Value*));
                 // printf("Hamon\n");
                 *temp_values = viewNode(nodes[i], context, isNode);
             }
@@ -742,12 +770,14 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
 
         if(total_no_of_values + no_of_values >= size)
             expand_Values(&values, &size, total_no_of_values + no_of_values);
-        memmove(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
-        total_no_of_values += no_of_values;
-
+        // memmove(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
         if(isNode[1] < 0 || isNode[2] > 0){
             total_no_of_values = 1;
-            values = temp_values;
+            *values = *temp_values;
+        }
+        else{
+            move_heap_alloced_memory(values + total_no_of_values, temp_values, no_of_values * sizeof(Value*));
+            total_no_of_values += no_of_values;
         }
 
         if(breaker > 0 || isNode[2] > 0)

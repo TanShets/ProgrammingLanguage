@@ -30,16 +30,19 @@ typedef struct INTERPRETER{
 void printValue(Value* value);
 
 Value* copy_Value(Value* value){
-	Value* new_value = (Value*)malloc(sizeof(Value));
+	// Value* new_value = (Value*)malloc(sizeof(Value));
+	Value* new_value = (Value*)allocate_ptr_for_size(sizeof(Value));
 	new_value->line_no = value->line_no, new_value->col_no = value->col_no;
 	new_value->valType = value->valType;
 	switch(value->valType){
 		case TT_INT:
-			new_value->num = malloc(sizeof(int));
+			// new_value->num = malloc(sizeof(int));
+			new_value->num = allocate_ptr_for_size(sizeof(int));
             *((int*)new_value->num) = *((int*)value->num);
             break;
         case TT_FLOAT:
-			new_value->num = malloc(sizeof(double));
+			// new_value->num = malloc(sizeof(double));
+			new_value->num = allocate_ptr_for_size(sizeof(double));
             *((double*)new_value->num) = *((double*)value->num);
             break;
         case TT_NULL:
@@ -47,7 +50,8 @@ Value* copy_Value(Value* value){
             break;
         case TT_STRING:{
             char* word1 = (char*)value->num;
-			char* word2 = (char*)calloc(strlen(word1) + 2, sizeof(char));
+			// char* word2 = (char*)calloc(strlen(word1) + 2, sizeof(char));
+			char* word2 = (char*)allocate_ptr_array(strlen(word1) + 2, sizeof(char));
 			strncpy(word2, word1, strlen(word1));
 			word2[strlen(word1)] = '\0';
 			new_value->num = word2;
@@ -86,7 +90,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 				char* temp_string = (char*)answer->num;
 				char* temp_string2 = (char*)changer->num;
 				int new_length = strlen(temp_string) + strlen(temp_string2) + 2;
-				answer->num = (char*)calloc(new_length, sizeof(char));
+				// answer->num = (char*)calloc(new_length, sizeof(char));
+				answer->num = (char*)allocate_ptr_array(new_length, sizeof(char));
 				strncpy((char*)(answer->num), temp_string, strlen(temp_string));
 				((char*)(answer->num))[strlen(temp_string)] = '\0';
 				strcat((char*)(answer->num), (char*)(changer->num));
@@ -108,7 +113,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 			break;
 		case TT_DIV:{
 			if(typo == TT_INT){
-				double* new_val = (double*)malloc(sizeof(double));
+				// double* new_val = (double*)malloc(sizeof(double));
+				double* new_val = (double*)allocate_ptr_for_size(sizeof(double));
 				*new_val = (double)(*((int*)answer->num));
 				answer->num = new_val;
 				answer->valType = TT_FLOAT;
@@ -129,7 +135,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 						*temp_answer *= temp_num;
 				else{
 					answer->valType = TT_FLOAT;
-					answer->num = (double*)malloc(sizeof(double));
+					// answer->num = (double*)malloc(sizeof(double));
+					answer->num = (double*)allocate_ptr_for_size(sizeof(double));
 					*((double*)answer->num) = 1;
 					for(int i = 0; i > index; i--)
 						*((double*)answer->num) /= temp_num;
@@ -143,7 +150,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 				double num2 = TYPE_CASTER(changer->num, typp, TT_FLOAT);
 				num1 = pow(num1, num2);
 				answer->valType = TT_FLOAT;
-				answer->num = malloc(sizeof(double));
+				// answer->num = malloc(sizeof(double));
+				answer->num = allocate_ptr_for_size(sizeof(double));
 				*((double*)answer->num) = num1;
 			}
 			break;
@@ -151,8 +159,10 @@ void alterValues(Value* answer, Value* changer, int op_type){
 	}
 
 	if(IN_BOOLEAN_OPERATORS(op_type)){
-		Value* temp_answer = (Value*)malloc(sizeof(Value));
-		memcpy(temp_answer, answer, sizeof(Value));
+		// Value* temp_answer = (Value*)malloc(sizeof(Value));
+		Value* temp_answer = (Value*)allocate_ptr_for_size(sizeof(Value));
+		// memcpy(temp_answer, answer, sizeof(Value));
+		copy_heap_alloced_memory(temp_answer, answer, sizeof(Value));
 		int new_value = 0;
 		switch(op_type){
 			case TT_EQUALS:
@@ -215,9 +225,11 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		}
 
 		Value* new_answer = NULL;
-		Token* new_token = (Token*)malloc(sizeof(Token));
+		// Token* new_token = (Token*)malloc(sizeof(Token));
+		Token* new_token = (Token*)allocate_ptr_for_size(sizeof(Token));
 		new_token->type = new_value == 1 ? TT_TRUE : TT_FALSE;
-		new_token->val = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+		// new_token->val = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+		new_token->val = (char*)allocate_ptr_array(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
 		new_token->line_no = answer->line_no, new_token->col_no = answer->col_no;
 		char *True = "true", *False = "false";
 		if(new_value == 1)
@@ -225,10 +237,12 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		else
 			strncpy((char*)(new_token->val), False, strlen(False));
 		new_answer = construct_Value(new_token);
-		memcpy(answer, new_answer, sizeof(Value));
+		// memcpy(answer, new_answer, sizeof(Value));
+		copy_heap_alloced_memory(answer, new_answer, sizeof(Value));
 	}
 	else if(IN_CONDITIONAL_OPERATORS(op_type)){
-		Token* new_token = (Token*)malloc(sizeof(Token));
+		// Token* new_token = (Token*)malloc(sizeof(Token));
+		Token* new_token = (Token*)allocate_ptr_for_size(sizeof(Token));
 		int new_val = 0;
 		int val1 = 0, val2 = 0;
 		val1 = TYPE_CASTER(answer->num, typo, TT_INT);
@@ -236,7 +250,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		new_val = op_type == TT_AND ? val1 && val2 : val1 || val2;
 		
 		new_token->type = new_val ? TT_TRUE : TT_FALSE;
-		new_token->val = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+		// new_token->val = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+		new_token->val = (char*)allocate_ptr_array(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
 		new_token->line_no = answer->line_no, new_token->col_no = answer->col_no;
 		char *True = "true", *False = "false";
 		if(new_val)
@@ -244,7 +259,8 @@ void alterValues(Value* answer, Value* changer, int op_type){
 		else
 			strncpy((char*)(new_token->val), False, strlen(False));
 		Value* new_answer = construct_Value(new_token);
-		memcpy(answer, new_answer, sizeof(Value));
+		// memcpy(answer, new_answer, sizeof(Value));
+		copy_heap_alloced_memory(answer, new_answer, sizeof(Value));
 	}
 }
 
@@ -281,12 +297,15 @@ Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
 		Value* answer = NULL;
 		Value* changer = NULL;
 		changer = right;
-		answer = (Value*)malloc(sizeof(Value));
-		memcpy(answer, left, sizeof(Value));
+		// answer = (Value*)malloc(sizeof(Value));
+		answer = (Value*)allocate_ptr_for_size(sizeof(Value));
+		// memcpy(answer, left, sizeof(Value));
+		copy_heap_alloced_memory(answer, left, sizeof(Value));
 		double* new_temp;
 		if(left->valType == TT_INT && right->valType == TT_FLOAT){
 			answer->valType = TT_FLOAT;
-			new_temp = (double*)malloc(sizeof(double));
+			// new_temp = (double*)malloc(sizeof(double));
+			new_temp = (double*)allocate_ptr_for_size(sizeof(double));
 			*new_temp = (double)(*((int*)answer->num));
 			answer->num = new_temp;
 		}
@@ -296,36 +315,44 @@ Value* operateValues(Value* left, Value* right, int op_type, int isChangingVar){
 }
 
 Value* construct_Value(Token* token){
-	Value* value = (Value*)malloc(sizeof(Value));
+	// Value* value = (Value*)malloc(sizeof(Value));
+	Value* value = (Value*)allocate_ptr_for_size(sizeof(Value));
 	value->num = token->val;
 	value->valType = token->type;
 	char* temp_val;
 	switch(value->valType){
 		case TT_INT:
-			value->num = (int*)malloc(sizeof(int));
+			// value->num = (int*)malloc(sizeof(int));
+			value->num = (int*)allocate_ptr_for_size(sizeof(int));
 			*((int*)(value->num)) = *((int*)(token->val));
 			break;
 		case TT_FLOAT:
-			value->num = (double*)malloc(sizeof(double));
+			// value->num = (double*)malloc(sizeof(double));
+			value->num = (double*)allocate_ptr_for_size(sizeof(double));
 			*((double*)(value->num)) = *((double*)(token->val));
 			break;
 		case TT_ERROR:
-			value->num = (Error*)malloc(sizeof(Error));
-			memcpy(value->num, token->val, sizeof(Error));
+			// value->num = (Error*)malloc(sizeof(Error));
+			value->num = (Error*)allocate_ptr_for_size(sizeof(Error));
+			// memcpy(value->num, token->val, sizeof(Error));
+			copy_heap_alloced_memory(value->num, token->val, sizeof(Error));
 			break;
 		case TT_TRUE:
 			temp_val = (char*)(token->val);
-			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			// value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			value->num = (char*)allocate_ptr_array(strlen(temp_val), sizeof(char));
 			strncpy((char*)(value->num), temp_val, strlen(temp_val));
 			break;
 		case TT_FALSE:
 			temp_val = (char*)(token->val);
-			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			// value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			value->num = (char*)allocate_ptr_array(strlen(temp_val), sizeof(char));
 			strncpy((char*)(value->num), temp_val, strlen(temp_val));
 			break;
 		case TT_NULL:
 			temp_val = (char*)(token->val);
-			value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			// value->num = (char*)calloc(strlen(temp_val), sizeof(char));
+			value->num = (char*)allocate_ptr_array(strlen(temp_val), sizeof(char));
 			strncpy((char*)(value->num), temp_val, strlen(temp_val));
 			break;
 		default:
@@ -357,7 +384,8 @@ Value* getVarValue(Node* node, Context* context){
 	int line_no = nodeVal->line_no, col_no = nodeVal->col_no;
 	Token* token;
 	if(answer[1] != NULL && *((int*)answer[1]) != TT_ERROR){
-		token = (Token*)malloc(sizeof(Token));
+		// token = (Token*)malloc(sizeof(Token));
+		token = (Token*)allocate_ptr_for_size(sizeof(Token));
 		token->type = *((int*)answer[1]);
 		token->val = answer[0];
 		token->line_no = node->val->line_no, token->col_no = node->val->col_no;
@@ -424,7 +452,8 @@ Value* getUnOpValue(Node* node, Context* context, int* isNode){
 					value = 1;
 					break;
 			}
-			val->num = calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+			// val->num = calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+			val->num = allocate_ptr_array(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
 			if(value == 0)
 				strncpy((char*)(val->num), False, strlen(False));
 			else
@@ -458,16 +487,20 @@ Value* getFunctionDefinitionValue(Node* node, Context* context){
     }
     char* name = (char*)(((Token*)node->else_block)->val);
 	char* num_params = INT_TO_STR(node->leftType);
-	char* temp_name = (char*)calloc(strlen(name) + strlen(num_params) + 5, sizeof(char));
+	// char* temp_name = (char*)calloc(strlen(name) + strlen(num_params) + 5, sizeof(char));
+	char* temp_name = (char*)allocate_ptr_array(strlen(name) + strlen(num_params) + 5, sizeof(char));
 	strncpy(temp_name, name, strlen(name));
 	temp_name[strlen(name)] = '\0';
 	strcat(temp_name, num_params);
 	name = temp_name;
 	modify_context(context, name, node, FUNCTION_DEFINITION_NODE);
-	Token* token = (Token*)malloc(sizeof(Token));
-	memcpy(token, node->val, sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
+	// memcpy(token, node->val, sizeof(Token));
+	copy_heap_alloced_memory(token, node->val, sizeof(Token));
 	token->type = TT_NULL;
-	token->val = (char*)calloc(5, sizeof(char));
+	// token->val = (char*)calloc(5, sizeof(char));
+	token->val = (char*)allocate_ptr_array(5, sizeof(char));
 	strcpy((char*)(token->val), "null");
 	return construct_Value(token);
 }

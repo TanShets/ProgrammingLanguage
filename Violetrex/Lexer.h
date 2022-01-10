@@ -111,7 +111,8 @@ void* str_to_num(char* line, int start, int end, bool isFloat)
 	int factor = length - 1;
 	if(isFloat)
 	{
-		double* answer = (double*)malloc(sizeof(double));
+		// double* answer = (double*)malloc(sizeof(double));
+		double* answer = (double*)allocate_ptr_for_size(sizeof(double));
 		double num = 0;
 		int index = start + 1;
 		while(index < end_pos && line[index] != '.')
@@ -140,7 +141,8 @@ void* str_to_num(char* line, int start, int end, bool isFloat)
 	}
 	else
 	{
-		int* num = (int*)malloc(sizeof(int));
+		// int* num = (int*)malloc(sizeof(int));
+		int* num = (int*)allocate_ptr_for_size(sizeof(int));
 		*num = 0;
 		for(int i = start; i < end_pos; i++)
 		{
@@ -155,7 +157,8 @@ Token* make_error(Error* error, int line_no, int col_no);
 
 Token* make_number(char* line, int* start, int* line_no, int* col_no)
 {
-	Token* token = (Token*)malloc(sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	int init_start = *start;
 	bool isCorrect = true;
 	int length = strlen(line);
@@ -197,7 +200,8 @@ Token* make_number(char* line, int* start, int* line_no, int* col_no)
 Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 {
 	int end = *start + 1;
-	char* operator = (char*)malloc(3 * sizeof(char));
+	// char* operator = (char*)malloc(3 * sizeof(char));
+	char* operator = (char*)allocate_ptr_array(3, sizeof(char));
 	operator[0] = line[*start];
 	int length = 1;
 	if(end < strlen(line) && strchr(T_OPERATOR_KEYS, line[end]) != NULL)
@@ -206,7 +210,8 @@ Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 		length++;
 	}
 	operator[length] = '\0';
-	Token* token = (Token*)malloc(sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	token->val = operator, token->type = T_OPERATOR(operator, length);
 	token->line_no = *line_no, token->col_no = *col_no;
 	*start += length;
@@ -215,7 +220,8 @@ Token* make_operator(char* line, int* start, int* line_no, int* col_no)
 
 void expand_string(char** s, int curr_size, int* max_size){
 	// char* new_string = (char*)calloc(curr_size * 2, sizeof(char));
-	*s = (char*)realloc(*s, 2 * curr_size * sizeof(char));
+	// *s = (char*)realloc(*s, 2 * curr_size * sizeof(char));
+	*s = (char*)reallocate_heap_alloced_ptr(*s, 2 * curr_size * sizeof(char));
 	// memcpy(new_string, *s, curr_size * sizeof(char));
 	// char* temp = *s;
 	// *s = new_string;
@@ -225,7 +231,8 @@ void expand_string(char** s, int curr_size, int* max_size){
 
 Token* make_variable(char* line, int* start, int* line_no, int* col_no)
 {
-	char* word = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+	// char* word = (char*)calloc(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
+	char* word = (char*)allocate_ptr_array(STD_VAR_NAME_SIZE_LIMIT, sizeof(char));
 	int length = strlen(line);
 	int temp_length = 1;
 	int max_length = STD_VAR_NAME_SIZE_LIMIT;
@@ -249,7 +256,8 @@ Token* make_variable(char* line, int* start, int* line_no, int* col_no)
 			expand_string(&word, temp_length, &max_length);
 		move(line_no, col_no, line, start, length);
 	}
-	Token* token = (Token*)malloc(sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	int token_val = keyword_token(word);
 	// printf("Flag 2\n");
 	token->val = word, token->line_no = *line_no;
@@ -260,20 +268,23 @@ Token* make_variable(char* line, int* start, int* line_no, int* col_no)
 }
 
 Token* make_error(Error* error, int line_no, int col_no){
-	Token* token = (Token*)malloc(sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	token->val = error, token->type = TT_ERROR;
 	token->line_no = line_no, token->col_no = col_no;
 	return token;
 }
 
 Token* make_string(char* line, int* start, int* line_no, int* col_no){
-	char* word = (char*)calloc(STD_STRING_SIZE_LIMIT, sizeof(char));
+	// char* word = (char*)calloc(STD_STRING_SIZE_LIMIT, sizeof(char));
+	char* word = (char*)allocate_ptr_array(STD_STRING_SIZE_LIMIT, sizeof(char));
 	int length = strlen(line);
 	int temp_length = 0;
 	int max_length = STD_STRING_SIZE_LIMIT;
 	char temp_char;
 	if(line[*start] != '\'' && line[*start] != '"'){
-		char* unexpected_val = (char*)malloc(sizeof(char));
+		// char* unexpected_val = (char*)malloc(sizeof(char));
+		char* unexpected_val = (char*)allocate_ptr_for_size(sizeof(char));
 		*unexpected_val = line[*start];
 		return make_error(
 			IllegalCharacterError(
@@ -309,7 +320,8 @@ Token* make_string(char* line, int* start, int* line_no, int* col_no){
 	if(*start == length || *start == TT_EOF)
 		return make_error(EOFError(*line_no, *col_no), *line_no, *col_no);
 	
-	Token* token = (Token*)malloc(sizeof(Token));
+	// Token* token = (Token*)malloc(sizeof(Token));
+	Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	// printf("Flag 2\n");
 	token->val = word, token->line_no = *line_no;
 	token->type = TT_VAR, token->col_no = *col_no;
@@ -321,7 +333,8 @@ Token* make_string(char* line, int* start, int* line_no, int* col_no){
 
 void delete_array_of_pointers(void** arr, int t_size)
 {
-	free(arr);
+	// free(arr);
+	free_pointer(arr);
 }
 
 void expand_tokens(Token*** tokens, int* initial_size)
@@ -333,13 +346,15 @@ void expand_tokens(Token*** tokens, int* initial_size)
 
 	// *tokens = new_token_array;
 	// delete_array_of_pointers((void**)temp_space, *initial_size);
-	*tokens = (Token**)realloc(*tokens, 2 * (*initial_size) * sizeof(Token*));
+	// *tokens = (Token**)realloc(*tokens, 2 * (*initial_size) * sizeof(Token*));
+	*tokens = (Token**)reallocate_heap_alloced_ptr(*tokens, 2 * (*initial_size) * sizeof(Token*));
 	*initial_size *= 2;
 }
 
 Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no)
 {
-	Token** tokens = (Token**)calloc(SIZE, sizeof(Token*));
+	// Token** tokens = (Token**)calloc(SIZE, sizeof(Token*));
+	Token** tokens = (Token**)allocate_ptr_array(SIZE, sizeof(Token*));
 	Token* temp_token;
 	Error* error;
 	*t_size = SIZE;
@@ -367,8 +382,10 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			c == '(' || c == ')' || c == '{' || c == '}' || 
 			c == '[' || c == ']'
 		){
-			tokens[*curr_size] = (Token*)malloc(sizeof(Token));
-			temp_char = (char*)malloc(sizeof(char));
+			// tokens[*curr_size] = (Token*)malloc(sizeof(Token));
+			tokens[*curr_size] = (Token*)allocate_ptr_for_size(sizeof(Token));
+			// temp_char = (char*)malloc(sizeof(char));
+			temp_char = (char*)allocate_ptr_for_size(sizeof(char));
 			*temp_char = line[i];
 			tokens[*curr_size]->val = temp_char;
 			tokens[*curr_size]->type = T_BRACKET(line[i]);
@@ -381,7 +398,8 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			temp_token = make_variable(line, &i, line_no, col_no);
 			if(temp_token->type == TT_ERROR)
 			{
-				temp_ptr = (Token**)malloc(sizeof(Token*));
+				// temp_ptr = (Token**)malloc(sizeof(Token*));
+				temp_ptr = (Token**)allocate_ptr_for_size(sizeof(Token*));
 				*temp_ptr = temp_token;
 				return temp_ptr;
 			}
@@ -394,8 +412,10 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			move(line_no, col_no, line, &i, length);
 		}
 		else if(c == ','){
-			tokens[*curr_size] = (Token*)malloc(sizeof(Token));
-			temp_char = (char*)malloc(sizeof(char));
+			// tokens[*curr_size] = (Token*)malloc(sizeof(Token));
+			tokens[*curr_size] = (Token*)allocate_ptr_for_size(sizeof(Token));
+			// temp_char = (char*)malloc(sizeof(char));
+			temp_char = (char*)allocate_ptr_for_size(sizeof(char));
 			*temp_char = line[i];
 			tokens[*curr_size]->val = temp_char;
 			tokens[*curr_size]->type = TT_COMMA;
@@ -408,7 +428,8 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 			temp_token = make_string(line, &i, line_no, col_no);
 			if(temp_token->type == TT_ERROR)
 			{
-				temp_ptr = (Token**)malloc(sizeof(Token*));
+				// temp_ptr = (Token**)malloc(sizeof(Token*));
+				temp_ptr = (Token**)allocate_ptr_for_size(sizeof(Token*));
 				*temp_ptr = temp_token;
 				return temp_ptr;
 			}
@@ -419,12 +440,14 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 		}
 		else{
 			if(curr_size != NULL){
-				curr_size = (int*)malloc(sizeof(int));
+				// curr_size = (int*)malloc(sizeof(int));
+				curr_size = (int*)allocate_ptr_for_size(sizeof(int));
 				*curr_size = 1;
 			}
 			error = IllegalCharacterError(*line_no, *col_no, 1, &line[i]);
 			temp_token = make_error(error, *line_no, *col_no);
-			temp_ptr = (Token**)malloc(sizeof(Token*));
+			// temp_ptr = (Token**)malloc(sizeof(Token*));
+			temp_ptr = (Token**)allocate_ptr_for_size(sizeof(Token*));
 			*temp_ptr = temp_token;
 			return temp_ptr;
 		}

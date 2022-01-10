@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "mem_allocator/mem_lib.h"
+
 #define TT_NULL -3
 #define TT_ERROR -2
 #define TT_EOF -1
@@ -285,7 +287,8 @@ int T_BRACKET(char c){
 }
 
 char* T_OPERATOR_REVERSE(int n){
-	char* op = (char*)calloc(5, sizeof(char));
+	// char* op = (char*)calloc(5, sizeof(char));
+	char* op = (char*)allocate_ptr_array(5, sizeof(char));
 	switch(n){
 		case TT_ADD:
 			op[0] = '+', op[1] = '\0';
@@ -358,11 +361,12 @@ void move(int* line_no, int* col_no, char* line, int* index, int length)
 void expand_file_data(char** line, int* filesize){
     int old_filesize = *filesize;
     *filesize *= 2;
-    char* new_line = (char*)calloc(*filesize, sizeof(char));
+    // char* new_line = (char*)calloc(*filesize, sizeof(char));
+	char* new_line = (char*)allocate_ptr_array(*filesize, sizeof(char));
     strncpy(new_line, *line, old_filesize);
     char* temp = *line;
     *line = new_line;
-    free(temp);
+    free_pointer(temp);
 }
 
 void str_reverse(char* word){
@@ -376,7 +380,8 @@ void str_reverse(char* word){
 }
 
 char* num_to_str(int num){
-	char* answer = (char*)calloc(10, sizeof(char));
+	// char* answer = (char*)calloc(10, sizeof(char));
+	char* answer = (char*)allocate_ptr_array(10, sizeof(char));
 	int curr_size = 0, max_size = 10;
 	int temp_num = num, temp;
 	while(temp_num > 0){
@@ -423,7 +428,8 @@ char* value_to_string_eq(void* num, int type){
             int_part = strlen(str_val) + zero_string;
 
             temp_str2 = str_val;
-            str_val = (char*)calloc(int_part * 2, sizeof(char));
+            // str_val = (char*)calloc(int_part * 2, sizeof(char));
+			str_val = (char*)allocate_ptr_array(int_part * 2, sizeof(char));
             int length = 0;
             strncpy(str_val, temp_str2, strlen(temp_str2));
             length = strlen(temp_str2);

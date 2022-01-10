@@ -14,14 +14,19 @@ typedef struct CONTEXT{
 } Context;
 
 Context* construct_Context(){
-    Context* context = (Context*)malloc(sizeof(Context));
+    // Context* context = (Context*)malloc(sizeof(Context));
+    Context* context = (Context*)allocate_ptr_for_size(sizeof(Context));
     context->context_size = CONTEXT_SIZE;
     context->content_size = 0;
     context->parent = NULL;
-    context->values = (void**)calloc(context->context_size, sizeof(void*));
-    context->keys = (char**)calloc(context->context_size, sizeof(char*));
-    context->type = (int*)calloc(context->context_size, sizeof(int));
-    memset(context->type, -1, context->context_size * sizeof(int));
+    // context->values = (void**)calloc(context->context_size, sizeof(void*));
+    // context->keys = (char**)calloc(context->context_size, sizeof(char*));
+    // context->type = (int*)calloc(context->context_size, sizeof(int));
+    context->values = (void**)allocate_ptr_array(context->context_size, sizeof(void*));
+    context->keys = (char**)allocate_ptr_array(context->context_size, sizeof(char*));
+    context->type = (int*)allocate_ptr_array(context->context_size, sizeof(int));
+    // memset(context->type, -1, context->context_size * sizeof(int));
+    set_heap_alloced_memory(context->type, -1, context->context_size * sizeof(int));
     return context;
 }
 
@@ -33,11 +38,15 @@ void expand_context(Context* context){
     int* old_type = context->type;
     int old_context_size = context->context_size;
     context->context_size *= 2;
-    context->values = (void**)calloc(context->context_size, sizeof(void*));
-    context->keys = (char**)calloc(context->context_size, sizeof(char*));
-    context->type = (int*)calloc(context->context_size, sizeof(int));
+    // context->values = (void**)calloc(context->context_size, sizeof(void*));
+    // context->keys = (char**)calloc(context->context_size, sizeof(char*));
+    // context->type = (int*)calloc(context->context_size, sizeof(int));
+    context->values = (void**)allocate_ptr_array(context->context_size, sizeof(void*));
+    context->keys = (char**)allocate_ptr_array(context->context_size, sizeof(char*));
+    context->type = (int*)allocate_ptr_array(context->context_size, sizeof(int));
     context->content_size = 0;
-    memset(context->type, -1, context->context_size * sizeof(int));
+    // memset(context->type, -1, context->context_size * sizeof(int));
+    set_heap_alloced_memory(context->type, -1, context->context_size * sizeof(int));
 
     for(int i = 0; i < old_context_size; i++){
         if(old_type[i] != -1)
@@ -74,8 +83,10 @@ int search_index_from_context(Context* context, char* key){
 
 void** search_from_context(Context* context, char* key){
     int length = strlen(key);
-    void** answer = (void**)calloc(2, sizeof(void*));
-    int* type = (int*)malloc(sizeof(int));
+    // void** answer = (void**)calloc(2, sizeof(void*));
+    void** answer = (void**)allocate_ptr_array(2, sizeof(void*));
+    // int* type = (int*)malloc(sizeof(int));
+    int* type = (int*)allocate_ptr_for_size(sizeof(int));
     
     int index = search_index_from_context(context, key);
     if(context->type[index] == -1 && context->parent == NULL)

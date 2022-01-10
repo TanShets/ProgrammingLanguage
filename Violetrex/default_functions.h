@@ -19,7 +19,8 @@ Value* print_function(Node* node, Context* context, int* isNode){
         printf(" ");
     }
     printf("\n");
-    Token* token = (Token*)malloc(sizeof(Token));
+    // Token* token = (Token*)malloc(sizeof(Token));
+    Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
     token->type = TT_NULL;
     char* null_word = {"null"};
     token->val = null_word;
@@ -49,11 +50,12 @@ Value* input_function(Node* node, Context* context, int* isNode){
         temp = viewNode(*param_vals, context, isNode);
         if(temp->valType == TT_ERROR)
             return temp;
-        printValue(temp);
+        // printValue(temp);
     }
 
     char c;
-    char* word = (char*)calloc(STD_STRING_SIZE_LIMIT, sizeof(char));
+    // char* word = (char*)calloc(STD_STRING_SIZE_LIMIT, sizeof(char));
+    char* word = (char*)allocate_ptr_array(STD_STRING_SIZE_LIMIT, sizeof(char));
     int max_size = STD_STRING_SIZE_LIMIT, temp_size = 0;
 
     while((c = getchar()) != EOF){
@@ -68,7 +70,8 @@ Value* input_function(Node* node, Context* context, int* isNode){
             expand_string(&word, temp_size, &max_size);
     }
 
-    Token* token = (Token*)malloc(sizeof(Token));
+    // Token* token = (Token*)malloc(sizeof(Token));
+    Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
     token->type = TT_STRING, token->val = word;
     token->line_no = -1, token->col_no = -1;
     return construct_Value(token);
@@ -132,7 +135,8 @@ Value* convert_to_string(Node* node, Context* context, int* isNode){
             int_part = strlen(str_val) + zero_string;
 
             temp_str2 = str_val;
-            str_val = (char*)calloc(int_part * 2, sizeof(char));
+            // str_val = (char*)calloc(int_part * 2, sizeof(char));
+            str_val = (char*)allocate_ptr_array(int_part * 2, sizeof(char));
             int length = 0;
             strncpy(str_val, temp_str2, strlen(temp_str2));
             length = strlen(temp_str2);
@@ -151,24 +155,28 @@ Value* convert_to_string(Node* node, Context* context, int* isNode){
             break;
         }
         case TT_STRING:
-            str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            // str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            str_val = (char*)allocate_ptr_array(strlen((char*)(temp_val->num)) + 2, sizeof(char));
             strncpy(str_val, (char*)(temp_val->num), strlen((char*)(temp_val->num)));
             str_val[strlen(str_val)] = '\0';
             break;
         case TT_NULL:{
-            str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            // str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            str_val = (char*)allocate_ptr_array(strlen((char*)(temp_val->num)) + 2, sizeof(char));
             strncpy(str_val, (char*)(temp_val->num), strlen((char*)(temp_val->num)));
             str_val[strlen(str_val)] = '\0';
             break;
         }
         case TT_TRUE:{
-            str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            // str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            str_val = (char*)allocate_ptr_array(strlen((char*)(temp_val->num)) + 2, sizeof(char));
             strncpy(str_val, (char*)(temp_val->num), strlen((char*)(temp_val->num)));
             str_val[strlen(str_val)] = '\0';
             break;
         }
         case TT_FALSE:{
-            str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            // str_val = (char*)calloc(strlen((char*)(temp_val->num)) + 2, sizeof(char));
+            str_val = (char*)allocate_ptr_array(strlen((char*)(temp_val->num)) + 2, sizeof(char));
             strncpy(str_val, (char*)(temp_val->num), strlen((char*)(temp_val->num)));
             str_val[strlen(str_val)] = '\0';
             break;
@@ -186,7 +194,8 @@ Value* convert_to_string(Node* node, Context* context, int* isNode){
         }
     }
 
-    Token* token = (Token*)malloc(sizeof(Token));
+    // Token* token = (Token*)malloc(sizeof(Token));
+    Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
     token->type = TT_STRING, token->val = str_val;
     token->line_no = line_no, token->col_no = col_no;
     return construct_Value(token);
@@ -226,12 +235,14 @@ Value* convert_to_float(Node* node, Context* context, int* isNode){
     switch(temp_val->valType){
         case TT_INT:{
             int num = *((int*)(temp_val->num));
-            new_val = (double*)malloc(sizeof(double));
+            // new_val = (double*)malloc(sizeof(double));
+            new_val = (double*)allocate_ptr_for_size(sizeof(double));
             *new_val = (double)num;
             break;
         }
         case TT_FLOAT:{
-            new_val = (double*)malloc(sizeof(double));
+            // new_val = (double*)malloc(sizeof(double));
+            new_val = (double*)allocate_ptr_for_size(sizeof(double));
             *new_val = *((double*)(temp_val->num));
             break;
         }
@@ -245,7 +256,8 @@ Value* convert_to_float(Node* node, Context* context, int* isNode){
             if(token->type == TT_INT){
                 token->type = TT_FLOAT;
                 int tempo = *((int*)(token->val));
-                token->val = malloc(sizeof(double));
+                // token->val = malloc(sizeof(double));
+                token->val = allocate_ptr_for_size(sizeof(double));
                 *((double*)(token->val)) = (double)tempo;
             }
             return construct_Value(token);
@@ -258,12 +270,14 @@ Value* convert_to_float(Node* node, Context* context, int* isNode){
             );
         }
         case TT_TRUE:{
-            new_val = (double*)malloc(sizeof(double));
+            // new_val = (double*)malloc(sizeof(double));
+            new_val = (double*)allocate_ptr_for_size(sizeof(double));
             *new_val = 1.0;
             break;
         }
         case TT_FALSE:{
-            new_val = (double*)malloc(sizeof(double));
+            // new_val = (double*)malloc(sizeof(double));
+            new_val = (double*)allocate_ptr_for_size(sizeof(double));
             *new_val = 0.0;
             break;
         }
@@ -280,7 +294,8 @@ Value* convert_to_float(Node* node, Context* context, int* isNode){
         }
     }
 
-    Token* token = (Token*)malloc(sizeof(Token));
+    // Token* token = (Token*)malloc(sizeof(Token));
+    Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
     token->type = TT_FLOAT, token->val = new_val;
     token->line_no = line_no, token->col_no = col_no;
     return construct_Value(token);
@@ -318,12 +333,14 @@ Value* convert_to_int(Node* node, Context* context, int* isNode){
     int line_no1, col_no1, index1;
     switch(temp_val->valType){
         case TT_INT:{
-            new_val = (int*)malloc(sizeof(int));
+            // new_val = (int*)malloc(sizeof(int));
+            new_val = (int*)allocate_ptr_for_size(sizeof(int));
             *new_val = *((int*)(temp_val->num));
             break;
         }
         case TT_FLOAT:{
-            new_val = (int*)malloc(sizeof(int));
+            // new_val = (int*)malloc(sizeof(int));
+            new_val = (int*)allocate_ptr_for_size(sizeof(int));
             *new_val = (int)(*((double*)(temp_val->num)) + 1e-9);
             break;
         }
@@ -337,7 +354,8 @@ Value* convert_to_int(Node* node, Context* context, int* isNode){
             if(token->type == TT_FLOAT){
                 token->type = TT_INT;
                 double* tempo = (double*)(token->val);
-                token->val = malloc(sizeof(int));
+                // token->val = malloc(sizeof(int));
+                token->val = allocate_ptr_for_size(sizeof(int));
                 *((int*)(token->val)) = (int)(*tempo);
             }
             return construct_Value(token);
@@ -350,12 +368,14 @@ Value* convert_to_int(Node* node, Context* context, int* isNode){
             );
         }
         case TT_TRUE:{
-            new_val = (int*)malloc(sizeof(int));
+            // new_val = (int*)malloc(sizeof(int));
+            new_val = (int*)allocate_ptr_for_size(sizeof(int));
             *new_val = 1;
             break;
         }
         case TT_FALSE:{
-            new_val = (int*)malloc(sizeof(int));
+            // new_val = (int*)malloc(sizeof(int));
+            new_val = (int*)allocate_ptr_for_size(sizeof(int));
             *new_val = 0;
             break;
         }
@@ -372,7 +392,8 @@ Value* convert_to_int(Node* node, Context* context, int* isNode){
         }
     }
 
-    Token* token = (Token*)malloc(sizeof(Token));
+    // Token* token = (Token*)malloc(sizeof(Token));
+    Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
     token->type = TT_INT, token->val = new_val;
     token->line_no = line_no, token->col_no = col_no;
     return construct_Value(token);

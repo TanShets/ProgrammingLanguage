@@ -25,9 +25,11 @@ typedef struct ERROR{
 } Error;
 
 Error* construct_Error(int type, char statement[], int line_no, int col_no){
-    Error* error = (Error*)malloc(sizeof(Error));
+    // Error* error = (Error*)malloc(sizeof(Error));
+    Error* error = (Error*)allocate_ptr_for_size(sizeof(Error));
     error->errType = type;
-    error->error_statement = (char*)calloc(2 * strlen(statement), sizeof(char));
+    // error->error_statement = (char*)calloc(2 * strlen(statement), sizeof(char));
+    error->error_statement = (char*)allocate_ptr_array(2 * strlen(statement), sizeof(char));
     strncpy(error->error_statement, statement, strlen(statement));
     error->error_statement[strlen(statement)] = '\0';
     error->line_no = line_no;

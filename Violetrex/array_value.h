@@ -16,12 +16,16 @@ void expand_ArrayValue(ArrayValue* arrayValue){
     int old_size = arrayValue->arr_size;
     arrayValue->arr_size *= 2;
     Value** old_keys = arrayValue->keys;
-    arrayValue->keys = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    // arrayValue->keys = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    arrayValue->keys = (Value**)allocate_ptr_array(arrayValue->arr_size, sizeof(Value*));
     Value** old_values = arrayValue->values;
-    arrayValue->values = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    // arrayValue->values = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    arrayValue->values = (Value**)allocate_ptr_array(arrayValue->arr_size, sizeof(Value*));
     int* old_key_type = arrayValue->key_type;
-    arrayValue->key_type = (int*)calloc(arrayValue->arr_size, sizeof(int));
-    memset(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
+    // arrayValue->key_type = (int*)calloc(arrayValue->arr_size, sizeof(int));
+    arrayValue->key_type = (int*)allocate_ptr_array(arrayValue->arr_size, sizeof(int));
+    // memset(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
+    set_heap_alloced_memory(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
     Value *temp_key, *temp_val;
     arrayValue->curr_size = 0;
     for(int i = 0; i < old_size; i++)
@@ -30,12 +34,17 @@ void expand_ArrayValue(ArrayValue* arrayValue){
 }
 
 ArrayValue* construct_ArrayValue(int size){
-    ArrayValue* arrayValue = (ArrayValue*)malloc(sizeof(ArrayValue));
+    // ArrayValue* arrayValue = (ArrayValue*)malloc(sizeof(ArrayValue));
+    ArrayValue* arrayValue = (ArrayValue*)allocate_ptr_for_size(sizeof(ArrayValue));
     arrayValue->arr_size = size * 2;
-    arrayValue->keys = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
-    arrayValue->values = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
-    arrayValue->key_type = (int*)calloc(arrayValue->arr_size, sizeof(int));
-    memset(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
+    // arrayValue->keys = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    // arrayValue->values = (Value**)calloc(arrayValue->arr_size, sizeof(Value*));
+    // arrayValue->key_type = (int*)calloc(arrayValue->arr_size, sizeof(int));
+    arrayValue->keys = (Value**)allocate_ptr_array(arrayValue->arr_size, sizeof(Value*));
+    arrayValue->values = (Value**)allocate_ptr_array(arrayValue->arr_size, sizeof(Value*));
+    arrayValue->key_type = (int*)allocate_ptr_array(arrayValue->arr_size, sizeof(int));
+    // memset(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
+    set_heap_alloced_memory(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
     arrayValue->default_index = 0;
     arrayValue->curr_size = 0;
 }
@@ -193,8 +202,10 @@ void modify_ArrayValue(ArrayValue* arrayValue, Value* key, Value* value){
     Value* temp_key;
     if(key == NULL){
         num = arrayValue->default_index;
-        Token* token = (Token*)malloc(sizeof(Token));
-        token->val = malloc(sizeof(int));
+        // Token* token = (Token*)malloc(sizeof(Token));
+        Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
+        // token->val = malloc(sizeof(int));
+        token->val = allocate_ptr_for_size(sizeof(int));
         *((int*)token->val) = num;
         token->type = TT_INT;
         token->line_no = value->line_no, token->col_no = value->col_no;
