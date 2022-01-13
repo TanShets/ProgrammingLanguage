@@ -14,12 +14,18 @@
 
 size_t SIZE_OF_ADDRESS_IN_CURRENT_MACHINE = sizeof(void*);
 #if (SIZE_OF_ADDRESS_IN_CURRENT_MACHINE == 4)
-#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE int
-#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%d"
+#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long unsigned int
+#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lu"
 #else
-#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long long int
-#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lld"
+#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long long unsigned int
+#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%llu"
 #endif
+
+#define HEAP_PTR_INT(ptr) ((HEAP_ALLOCED_HASHMAP_INDEX_TYPE)((HEAP_ALLOCED_HASHMAP_INDEX_TYPE*)ptr))
+#define HEAP_PTR_GREATER(ptr1, ptr2) (HEAP_PTR_INT(ptr1) > HEAP_PTR_INT(ptr2))
+#define HEAP_PTR_GREATER_EQ(ptr1, ptr2) (HEAP_PTR_INT(ptr1) >= HEAP_PTR_INT(ptr2))
+#define HEAP_PTR_LESSER(ptr1, ptr2) (HEAP_PTR_INT(ptr1) < HEAP_PTR_INT(ptr2))
+#define HEAP_PTR_LESSER_EQ(ptr1, ptr2) (HEAP_PTR_INT(ptr1) <= HEAP_PTR_INT(ptr2))
 
 typedef struct HEAP_BLOCK{
     void* addr;
@@ -125,8 +131,8 @@ void expand_heap_allocated_heap_list(int flag){
         temp = heads[i];
         fp = NULL;
         while(temp != NULL){
-            if(temp - head < occupied_size && temp >= head){
-                new_temp = (heap_block*)(new_head + count);
+            if((char*)temp - (char*)head < occupied_size && HEAP_PTR_GREATER_EQ(temp, head)){ //temp >= head){
+                new_temp = ((heap_block*)new_head) + count;
                 // block_temp = *new_temp;
                 new_remaining -= sizeof(heap_block);
                 count++;
@@ -175,7 +181,7 @@ void add_to_alloced_list_by_node(heap_block* node){
     }
     heap_block *temp = head, *fp = NULL;
     int result = 0;
-    while(temp != NULL && node->addr > temp->addr){
+    while(temp != NULL && HEAP_PTR_GREATER(node->addr, temp->addr)){ //(char*)(node->addr) > (char*)(temp->addr)){
         fp = temp;
         temp = temp->next;
     }
@@ -206,7 +212,7 @@ void add_to_alloced_list_by_node(heap_block* node){
 void add_to_alloced_list_by_pointer(void* ptr, size_t size){
     if(garbage_heap_alloced_pointer_list == NULL && LIST_ALLOCED_BLOCK_SIZE_REMAINING < sizeof(heap_block))
         expand_heap_allocated_heap_list(0);
-    heap_block* new_ptr = (heap_block*)(heap_alloced_pointer_list + HEAP_ALLOCED_POINTER_LIST_SIZE - LIST_ALLOCED_BLOCK_SIZE_REMAINING);
+    heap_block* new_ptr = (heap_block*)((char*)heap_alloced_pointer_list + HEAP_ALLOCED_POINTER_LIST_SIZE - LIST_ALLOCED_BLOCK_SIZE_REMAINING);
     int isNull = garbage_heap_alloced_pointer_list == NULL;
     new_ptr = isNull ? new_ptr : garbage_heap_alloced_pointer_list;
     LIST_ALLOCED_BLOCK_SIZE_REMAINING -= isNull ? sizeof(heap_block) : 0;
@@ -234,7 +240,7 @@ void* allocate_ptr_for_size(size_t size){
     if(xp != NULL){
         temp = xp;
         fp = yp;
-        answer = temp->size == size ? temp->addr : temp->addr + temp->size - ALLOC_SIZE_ADJUST(size);
+        answer = temp->size == size ? temp->addr : (void*)((char*)temp->addr + temp->size - ALLOC_SIZE_ADJUST(size));
         if(temp->size == size && temp != head){
             fp->next = temp->next;
             temp->next = NULL;
@@ -263,14 +269,14 @@ void* allocate_ptr_for_size(size_t size){
         temp = (heap_block*)heap_free_pointer_list;
         while(temp->next != NULL)
             temp = temp->next;
-        temp->next = heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING;
+        temp->next = (heap_block*)((char*)heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
         temp = (heap_block*)(temp->next);
         temp->addr = new_block_addr;
         temp->size = new_block_size - ALLOC_SIZE_ADJUST(size);
         temp->next = NULL;
         LIST_FREE_BLOCK_SIZE_REMAINING -= sizeof(heap_block);
 
-        answer = temp->addr + temp->size;
+        answer = (void*)((char*)temp->addr + temp->size);
         add_to_alloced_list_by_pointer(answer, ALLOC_SIZE_ADJUST(size));
         return answer;
     }
@@ -284,22 +290,22 @@ void add_to_free_list_by_node(heap_block* node){
     heap_block* head = (heap_block*)heap_free_pointer_list;
     heap_block *temp = head, *fp = NULL;
 
-    while(temp != NULL && temp->addr < node->addr){
+    while(temp != NULL && HEAP_PTR_LESSER(temp->addr, node->addr)){ //(char*)(temp->addr) < (char*)(node->addr)){
         fp = temp;
         temp = temp->next;
     }
 
     if(temp == head){
-        if(head->addr + head->size == node->addr){
+        if((void*)((char*)head->addr + head->size) == node->addr){
             head->size += node->size;
             add_to_garbage_heap_alloced_list(node);
         }
-        else if(node->addr + node->size == head->addr){
+        else if((void*)((char*)node->addr + node->size) == head->addr){
             head->addr = node->addr;
             head->size += node->size;
             add_to_garbage_heap_alloced_list(node);
         }
-        else if(head->addr < node->addr){
+        else if(HEAP_PTR_LESSER(head->addr, node->addr)){ //(char*)head->addr < (char*)node->addr){
             node->next = head->next;
             head->next = node;
         }
@@ -315,11 +321,11 @@ void add_to_free_list_by_node(heap_block* node){
         }
     }
     else{
-        if(fp->addr + fp->size == node->addr){
+        if((void*)((char*)fp->addr + fp->size) == node->addr){
             fp->size += node->size;
             add_to_garbage_heap_alloced_list(node);
         }
-        else if(temp != NULL && node->addr + node->size == temp->addr){
+        else if(temp != NULL && (void*)((char*)node->addr + node->size) == temp->addr){
             temp->size += node->size;
             temp->addr = node->addr;
             add_to_garbage_heap_alloced_list(node);
@@ -334,7 +340,7 @@ void add_to_free_list_by_node(heap_block* node){
 void add_to_free_list_by_pointer(void* ptr, size_t size){
     if(garbage_heap_alloced_pointer_list == NULL && LIST_FREE_BLOCK_SIZE_REMAINING < sizeof(heap_block))
         expand_heap_allocated_heap_list(1);
-    heap_block* new_ptr = (heap_block*)(heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
+    heap_block* new_ptr = (heap_block*)((char*)heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
     int isNull = garbage_heap_alloced_pointer_list == NULL;
     new_ptr = isNull ? new_ptr : garbage_heap_alloced_pointer_list;
     LIST_FREE_BLOCK_SIZE_REMAINING -= isNull ? sizeof(heap_block) : 0;
