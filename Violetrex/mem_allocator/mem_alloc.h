@@ -14,14 +14,12 @@
 
 #define ALLOC_SIZE_ADJUST(x) (x % 8 == 0 ? x : x + 8 - (x % 8))
 
-size_t SIZE_OF_ADDRESS_IN_CURRENT_MACHINE = sizeof(void*);
-size_t SIZE_OF_32_BIT_INTEGER = sizeof(int);
-#if (SIZE_OF_ADDRESS_IN_CURRENT_MACHINE == SIZE_OF_32_BIT_INTEGER)
-#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long unsigned int
-#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lu"
-#else
+#if (_WIN64 || __x86_64__)
 #define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long long unsigned int
 #define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%llu"
+#else
+#define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long unsigned int
+#define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lu"
 #endif
 
 #define HEAP_PTR_INT(ptr) ((HEAP_ALLOCED_HASHMAP_INDEX_TYPE)((HEAP_ALLOCED_HASHMAP_INDEX_TYPE*)ptr))
@@ -30,7 +28,9 @@ size_t SIZE_OF_32_BIT_INTEGER = sizeof(int);
 #define HEAP_PTR_LESSER(ptr1, ptr2) (HEAP_PTR_INT(ptr1) < HEAP_PTR_INT(ptr2))
 #define HEAP_PTR_LESSER_EQ(ptr1, ptr2) (HEAP_PTR_INT(ptr1) <= HEAP_PTR_INT(ptr2))
 
+#ifndef _INC_STDLIB
 extern void exit(int __status) __THROW __attribute__ ((__noreturn__));
+#endif
 
 typedef struct HEAP_BLOCK{
     void* addr;
