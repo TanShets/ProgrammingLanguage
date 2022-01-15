@@ -1,11 +1,14 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include "symbols.h"
 
 int add(int a, int b)
 {
 	return a + b;
 }
+
+extern void exit(int __status) __THROW __attribute__ ((__noreturn__));
+
+void overflow(void) __THROW __attribute__((noreturn));
 
 int main(){
 	start_Dynamic_Mem();
@@ -27,5 +30,13 @@ int main(){
 	printf("Finally %d\n", HEAP_PTR_LESSER_EQ(ptr1, ptr2));
 	printf("Finally %d\n", HEAP_PTR_GREATER(ptr1, ptr2));
 	printf("Finally %d\n", HEAP_PTR_GREATER_EQ(ptr1, ptr2));
+	printf("Size of heap list %d\n", sizeof(heap_block));
+	exit(0);
+	overflow();
 	return 0;
+}
+
+void overflow(void){
+	printf("Made it to overflow\n");
+	while(1);
 }

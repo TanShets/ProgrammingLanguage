@@ -12,6 +12,8 @@ int insert_into_ArrayValue(ArrayValue* arrayValue, Value* key);
 
 void modify_ArrayValue(ArrayValue* arrayValue, Value* key, Value* value);
 
+void print_ArrayValue(ArrayValue* arrayValue);
+
 void expand_ArrayValue(ArrayValue* arrayValue){
     int old_size = arrayValue->arr_size;
     arrayValue->arr_size *= 2;
@@ -28,9 +30,11 @@ void expand_ArrayValue(ArrayValue* arrayValue){
     set_heap_alloced_memory(arrayValue->key_type, TT_EOF, arrayValue->arr_size * sizeof(int));
     Value *temp_key, *temp_val;
     arrayValue->curr_size = 0;
-    for(int i = 0; i < old_size; i++)
-        if(old_key_type[i] != TT_EOF)
+    for(int i = 0; i < old_size; i++){
+        if(old_key_type[i] != TT_EOF && old_key_type[i] != TT_ERROR){
             modify_ArrayValue(arrayValue, old_keys[i], old_values[i]);
+        }
+    }
 }
 
 ArrayValue* construct_ArrayValue(int size){
@@ -198,8 +202,9 @@ int insert_into_ArrayValue(ArrayValue* arrayValue, Value* key){
 }
 
 void modify_ArrayValue(ArrayValue* arrayValue, Value* key, Value* value){
-    int num, index, old_index = -2;
-    Value* temp_key;
+    int num, index = -1, old_index = -2;
+    // view_heap_pointer_status();
+    Value* temp_key = NULL;
     if(key == NULL){
         num = arrayValue->default_index;
         // Token* token = (Token*)malloc(sizeof(Token));
@@ -232,7 +237,6 @@ void modify_ArrayValue(ArrayValue* arrayValue, Value* key, Value* value){
         if(temp_key == NULL)
             return;
     }
-
     arrayValue->key_type[index] = temp_key->valType;
     arrayValue->keys[index] = temp_key;
     arrayValue->values[index] = copy_Value(value);
@@ -251,8 +255,8 @@ void delete_from_ArrayValue(ArrayValue* arrayValue, Value* key){
         return;
     
     arrayValue->key_type[index] = TT_ERROR;
-    free(arrayValue->keys[index]);
-    free(arrayValue->values[index]);
+    free_pointer(arrayValue->keys[index]);
+    free_pointer(arrayValue->values[index]);
     arrayValue->curr_size--;
 }
 

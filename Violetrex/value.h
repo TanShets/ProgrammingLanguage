@@ -39,21 +39,24 @@ Value* copy_Value(Value* value){
 			// new_value->num = malloc(sizeof(int));
 			new_value->num = allocate_ptr_for_size(sizeof(int));
             *((int*)new_value->num) = *((int*)value->num);
+			// copy_heap_alloced_memory(new_value->num, value->num, sizeof(int));
             break;
         case TT_FLOAT:
 			// new_value->num = malloc(sizeof(double));
 			new_value->num = allocate_ptr_for_size(sizeof(double));
             *((double*)new_value->num) = *((double*)value->num);
+			// copy_heap_alloced_memory(new_value->num, value->num, sizeof(double));
             break;
         case TT_NULL:
             new_value->num = value->num;
             break;
         case TT_STRING:{
             char* word1 = (char*)value->num;
+			int length = strlen(word1);
 			// char* word2 = (char*)calloc(strlen(word1) + 2, sizeof(char));
 			char* word2 = (char*)allocate_ptr_array(strlen(word1) + 2, sizeof(char));
-			strncpy(word2, word1, strlen(word1));
-			word2[strlen(word1)] = '\0';
+			strncpy(word2, word1, length);
+			word2[length] = '\0';
 			new_value->num = word2;
             break;
 		}

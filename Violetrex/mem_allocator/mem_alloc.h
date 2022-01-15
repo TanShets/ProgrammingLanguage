@@ -10,10 +10,13 @@
 #define HEAP_ALLOC_BLOCK 50000
 #define LIST_ALLOC_BLOCK 5000
 
+#define HEAP_LIST_TRAVERSAL_COUNTER 80000
+
 #define ALLOC_SIZE_ADJUST(x) (x % 8 == 0 ? x : x + 8 - (x % 8))
 
 size_t SIZE_OF_ADDRESS_IN_CURRENT_MACHINE = sizeof(void*);
-#if (SIZE_OF_ADDRESS_IN_CURRENT_MACHINE == 4)
+size_t SIZE_OF_32_BIT_INTEGER = sizeof(int);
+#if (SIZE_OF_ADDRESS_IN_CURRENT_MACHINE == SIZE_OF_32_BIT_INTEGER)
 #define HEAP_ALLOCED_HASHMAP_INDEX_TYPE long unsigned int
 #define __HEAP_ALLOCED_HASHMAP_INDEX_TYPE__FORMAT__ "%lu"
 #else
@@ -26,6 +29,8 @@ size_t SIZE_OF_ADDRESS_IN_CURRENT_MACHINE = sizeof(void*);
 #define HEAP_PTR_GREATER_EQ(ptr1, ptr2) (HEAP_PTR_INT(ptr1) >= HEAP_PTR_INT(ptr2))
 #define HEAP_PTR_LESSER(ptr1, ptr2) (HEAP_PTR_INT(ptr1) < HEAP_PTR_INT(ptr2))
 #define HEAP_PTR_LESSER_EQ(ptr1, ptr2) (HEAP_PTR_INT(ptr1) <= HEAP_PTR_INT(ptr2))
+
+extern void exit(int __status) __THROW __attribute__ ((__noreturn__));
 
 typedef struct HEAP_BLOCK{
     void* addr;
@@ -43,6 +48,9 @@ void insert_into_heap_alloced_hashmap(void* key, void* value, int isHead);
 void modify_heap_alloced_hashmap_with_key(void* key, void* new_value, int isHead);
 void delete_key_from_heap_alloced_hashmap(void* key);
 HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE find_from_heap_alloced_hashmap(void* key);
+int detect_loop_in_heap_list(heap_block* head);
+void view_heap_pointer_status();
+void add_to_free_list_by_pointer(void* ptr, size_t size);
 
 void* mem_alloc(size_t size){
     void* new_p;
@@ -63,6 +71,7 @@ void* mem_alloc(size_t size){
 
 void mem_free_heap_allocated_pointer(void* ptr, size_t size){
     int num;
+    // printf("Freeing %p\n", ptr);
 #ifdef __linux
     num = munmap(ptr, size) == 0 ? 1 : 0;
 #elif _WIN32
@@ -104,6 +113,9 @@ void start_Dynamic_Mem(){
     initialize_heap_alloc_hashmap();
     create_heap_list(heap_free_pointer_list, &LIST_FREE_BLOCK_SIZE_REMAINING, 1);
     create_heap_list(heap_alloced_pointer_list, &LIST_ALLOCED_BLOCK_SIZE_REMAINING, 0);
+    // printf("%p %p %d\n", heap_free_pointer_list, heap_alloced_pointer_list, 
+    //                     (char*)heap_free_pointer_list - (char*)heap_alloced_pointer_list);
+    // view_heap_pointer_status();
 }
 
 void expand_heap_allocated_heap_list(int flag){
@@ -166,7 +178,10 @@ void expand_heap_allocated_heap_list(int flag){
         HEAP_ALLOCED_POINTER_LIST_SIZE = new_size;
         LIST_ALLOCED_BLOCK_SIZE_REMAINING = new_remaining;
     }
-
+    // FILE* file = fopen("logs.txt", "a");
+    // fprintf(file, "Heap expansion:\n");
+    // fclose(file);
+    // view_heap_pointer_status();
     mem_free_heap_allocated_pointer(head, size);
 }
 
@@ -180,8 +195,15 @@ void add_to_alloced_list_by_node(heap_block* node){
         return;
     }
     heap_block *temp = head, *fp = NULL;
-    int result = 0;
+    int result = 0, list_counter = 1;
     while(temp != NULL && HEAP_PTR_GREATER(node->addr, temp->addr)){ //(char*)(node->addr) > (char*)(temp->addr)){
+        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
+            if(detect_loop_in_heap_list(head)){
+                printf("HeapError: Circular list detected while inserting node into alloced\n");
+                exit(0);
+            }
+        }
+        list_counter++;
         fp = temp;
         temp = temp->next;
     }
@@ -226,6 +248,7 @@ void add_to_alloced_list_by_pointer(void* ptr, size_t size){
 void* allocate_ptr_for_size(size_t size){
     heap_block* head = (heap_block*)heap_free_pointer_list;
     heap_block *temp = head, *fp = NULL, *xp = NULL, *yp = NULL;
+    int list_counter = 1;
     while(temp != NULL){
         if(temp->size >= size){
             if(xp == NULL || xp->size > temp->size){
@@ -233,6 +256,15 @@ void* allocate_ptr_for_size(size_t size){
                 xp = temp;
             }
         }
+
+        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
+            if(detect_loop_in_heap_list(head)){
+                printf("HeapError: Detected Circular Linked list while "
+                        "looking for free pointer of proper size\n");
+                exit(0);
+            }
+        }
+        list_counter++;
         fp = temp;
         temp = temp->next;
     }
@@ -240,16 +272,37 @@ void* allocate_ptr_for_size(size_t size){
     if(xp != NULL){
         temp = xp;
         fp = yp;
-        answer = temp->size == size ? temp->addr : (void*)((char*)temp->addr + temp->size - ALLOC_SIZE_ADJUST(size));
-        if(temp->size == size && temp != head){
+        // FILE* file = fopen("logs.txt", "a");
+        answer = temp->size == ALLOC_SIZE_ADJUST(size) ? temp->addr : (void*)((char*)temp->addr + temp->size - ALLOC_SIZE_ADJUST(size));
+        if(temp->size == ALLOC_SIZE_ADJUST(size) && temp != head){
             fp->next = temp->next;
             temp->next = NULL;
             add_to_alloced_list_by_node(temp);
+        }
+        else if(temp->size == ALLOC_SIZE_ADJUST(size) && temp == head){
+            add_to_alloced_list_by_pointer(answer, ALLOC_SIZE_ADJUST(size));
+            if(head->next != NULL){
+                temp = head->next;
+                head->addr = temp->addr;
+                head->size = temp->size;
+                head->next = temp->next;
+                temp->next = NULL;
+                add_to_garbage_heap_alloced_list(temp);
+            }
+            else{
+                size_t new_block_size = HEAP_ALLOC_BLOCK;
+                void* new_block_addr = mem_alloc(new_block_size);
+                head->addr = new_block_addr;
+                head->size = new_block_size;
+            }
         }
         else{
             temp->size -= ALLOC_SIZE_ADJUST(size);
             add_to_alloced_list_by_pointer(answer, ALLOC_SIZE_ADJUST(size));
         }
+        // fprintf(file, "Allocate ptr for size found a free node:\n");
+        // fclose(file);
+        // view_heap_pointer_status();
         return answer;
     }
     else{
@@ -266,18 +319,22 @@ void* allocate_ptr_for_size(size_t size){
             printf("Heap Overflow: Space of size %d bytes not available\n", new_block_size);
             exit(0);
         }
-        temp = (heap_block*)heap_free_pointer_list;
-        while(temp->next != NULL)
-            temp = temp->next;
-        temp->next = (heap_block*)((char*)heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
-        temp = (heap_block*)(temp->next);
-        temp->addr = new_block_addr;
-        temp->size = new_block_size - ALLOC_SIZE_ADJUST(size);
-        temp->next = NULL;
-        LIST_FREE_BLOCK_SIZE_REMAINING -= sizeof(heap_block);
-
-        answer = (void*)((char*)temp->addr + temp->size);
+        // temp = (heap_block*)heap_free_pointer_list;
+        // while(temp->next != NULL)
+        //     temp = temp->next;
+        // temp->next = (heap_block*)((char*)heap_free_pointer_list + HEAP_FREE_POINTER_LIST_SIZE - LIST_FREE_BLOCK_SIZE_REMAINING);
+        // temp = (heap_block*)(temp->next);
+        // temp->addr = new_block_addr;
+        // temp->size = new_block_size - ALLOC_SIZE_ADJUST(size);
+        // temp->next = NULL;
+        add_to_free_list_by_pointer(new_block_addr, new_block_size - ALLOC_SIZE_ADJUST(size));
+        // LIST_FREE_BLOCK_SIZE_REMAINING -= sizeof(heap_block);
+        answer = (void*)((char*)new_block_addr + new_block_size - ALLOC_SIZE_ADJUST(size));
         add_to_alloced_list_by_pointer(answer, ALLOC_SIZE_ADJUST(size));
+        // FILE* file = fopen("logs.txt", "a");
+        // fprintf(file, "Allocate ptr for size created a new free node:\n");
+        // fclose(file);
+        // view_heap_pointer_status();
         return answer;
     }
 }
@@ -289,25 +346,33 @@ void* allocate_ptr_array(int count, size_t element_size){
 void add_to_free_list_by_node(heap_block* node){
     heap_block* head = (heap_block*)heap_free_pointer_list;
     heap_block *temp = head, *fp = NULL;
-
-    while(temp != NULL && HEAP_PTR_LESSER(temp->addr, node->addr)){ //(char*)(temp->addr) < (char*)(node->addr)){
+    int list_counter = 1;
+    while(temp != NULL && HEAP_PTR_GREATER(node->addr, temp->addr)){ //(char*)(temp->addr) < (char*)(node->addr)){
+        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
+            if(detect_loop_in_heap_list(head)){
+                printf("HeapError: Cicular linked list detected "
+                        "while adding to Free list by node\n");
+                exit(0);
+            }
+        }
+        list_counter++;
         fp = temp;
         temp = temp->next;
     }
 
     if(temp == head){
+        // FILE* file = fopen("logs.txt", "a");
+        // fprintf(file, "Addresses before %p %p\n", head->addr, node->addr);
         if((void*)((char*)head->addr + head->size) == node->addr){
             head->size += node->size;
+            // fprintf(file, "Addresses after %p %p\n", head->addr, node->addr);
             add_to_garbage_heap_alloced_list(node);
         }
         else if((void*)((char*)node->addr + node->size) == head->addr){
             head->addr = node->addr;
             head->size += node->size;
+            // fprintf(file, "Addresses after %p %p\n", head->addr, node->addr);
             add_to_garbage_heap_alloced_list(node);
-        }
-        else if(HEAP_PTR_LESSER(head->addr, node->addr)){ //(char*)head->addr < (char*)node->addr){
-            node->next = head->next;
-            head->next = node;
         }
         else{
             void* temp_addr = head->addr;
@@ -318,7 +383,13 @@ void add_to_free_list_by_node(heap_block* node){
             node->size = temp_size;
             node->next = head->next;
             head->next = node;
+            // fprintf(file, "Addresses after %p %p\n", head->addr, node->addr);
         }
+        // fclose(file);
+        // else if(HEAP_PTR_LESSER(head->addr, node->addr)){ //(char*)head->addr < (char*)node->addr){
+        //     node->next = head->next;
+        //     head->next = node;
+        // }
     }
     else{
         if((void*)((char*)fp->addr + fp->size) == node->addr){
@@ -331,8 +402,11 @@ void add_to_free_list_by_node(heap_block* node){
             add_to_garbage_heap_alloced_list(node);
         }
         else{
+            // FILE* file = fopen("logs.txt", "a");
+            // fprintf(file, "Did you fall here?\n");
             node->next = fp->next;
             fp->next = node;
+            // fclose(file);
         }
     }
 }
@@ -404,18 +478,31 @@ void free_pointer(void* ptr){
 }
 
 void view_heap_pointer_status(){
+    // FILE* fp = fopen("logs.txt", "a");
     heap_block* temp;
     heap_block* heads[2] = {heap_alloced_pointer_list, heap_free_pointer_list};
     char* lines[2] = {"Alloced blocks: ", "Free blocks: "};
     for(int i = 0; i < 2; i++){
         printf("%s\n", lines[i]);
+        // fprintf(fp, "%s\n", lines[i]);
         temp = heads[i];
+        if(detect_loop_in_heap_list(heads[i])){
+            printf("HeapError: Circular linked list detected while "
+                    "viewing heap pointer status\n");
+            // fprintf(fp, "HeapError: Circular linked list detected while "
+            //         "viewing heap pointer status\n");
+            exit(0);
+        }
         while(temp != NULL){
             printf("%p -> %p: %d\n", temp, temp->addr, temp->size);
+            // fprintf(fp, "%p -> %p: %d -> next: %p\n", temp, temp->addr, temp->size, temp->next);
             temp = temp->next;
         }
+        // fprintf(fp, "\n\n");
         printf("\n\n");
+        // fclose(fp);
     }
+    // fclose(fp);
 }
 
 void copy_heap_alloced_memory(void* des, void* src, size_t size){

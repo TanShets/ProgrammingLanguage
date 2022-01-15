@@ -6,6 +6,7 @@
 #define DEFAULT_NO_OF_VALUES 10
 
 void printValue(Value* value){
+    // check_byte_content_of_pointer(value->num, 4 * sizeof(char));
 	if(value == NULL){
 		printf("Null value");
 		return;
@@ -36,7 +37,8 @@ void printValue(Value* value){
 			break;
 		}
 		case TT_STRING:{
-			printf("%s", (char*)value->num);
+            char* line = (char*)(value->num);
+			printf("%s", line);
 			break;
 		}
         case TT_ARRAY:{
@@ -180,6 +182,7 @@ Value* getArrayValue(Node* node, Context* context, int* isNode){
         temp_val = viewNode(values[i], context, isNode);
         if(temp_val->valType == TT_ERROR)
             return temp_val;
+        
         modify_ArrayValue(arrayValue, temp_key, temp_val);
     }
     val->num = arrayValue;
@@ -613,7 +616,6 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
                 )
             );
         }
-
         int count = starter->rightType;
         Node** indices = (Node**)(starter->right);
         Value *temp_key;
