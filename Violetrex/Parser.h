@@ -19,6 +19,10 @@
 #define STRING_NODE 15
 #define ARRAY_NODE 16
 #define INDEX_NODE 17
+#define CLASS_DEFINITION_NODE 18
+#define STATIC_FUNCTION_DEFINITION_NODE 19
+#define OBJECT_NODE 20
+#define THIS_NODE 21
 
 #define CONDITIONAL_STATEMENT 0
 #define BOOLEAN_STATEMENT 1
@@ -28,6 +32,17 @@
 #define NUM_TO_NUM 5
 
 #define DEFAULT_NO_OF_FUNCTION_PARAMETERS 5
+
+#define ASSERT_NOT_EOF(curr_index, size, tokens) ({\
+	if(IS_EOA(curr_index, size)){\
+		return ErrorNode(\
+			make_error(\
+				EOFError(tokens[size - 1]->line_no, tokens[size - 1]->col_no),\
+				tokens[size - 1]->line_no, tokens[size - 1]->col_no\
+			)\
+		);\
+	}\
+})
 
 typedef struct NODE{
 	int nodeType;
@@ -47,6 +62,42 @@ Node* construct_Node(Token* val, int nodeType){
 	node->block_lengths = NULL, node->leftType = TT_ERROR;
 	node->rightType = TT_ERROR, node->isVarNode = 0;
 	node->else_block_Type = TT_ERROR;
+	return node;
+}
+
+Node* StaticFunctionDefinitionNode(Token* val, Node* right){
+	if(val->type != TT_STATIC)
+		return NULL;
+	Node* node = construct_Node(val, STATIC_FUNCTION_DEFINITION_NODE);
+	node->right = right;
+	return node;
+}
+
+Node* ThisNode(Token* val){
+	return val->type == TT_THIS ? construct_Node(val, THIS_NODE) : NULL;
+}
+
+Node* ObjectNode(Token* val, Node* object_name, Node* property_called){
+	Node* node = construct_Node(val, OBJECT_NODE);
+	node->left = object_name;
+	node->leftType = object_name->nodeType;
+	node->right = property_called;
+	node->rightType = property_called->nodeType;
+	return node;
+}
+
+Node* ClassDefinitionNode(
+	Token* val, Node** superclasses, int no_of_superclasses, Node** body, 
+	int no_of_nodes, Node* class_name
+){
+	if(val->type != TT_CLASS)
+		return NULL;
+	Node* node = construct_Node(val, CLASS_DEFINITION_NODE);
+	node->left = superclasses;
+	node->leftType = no_of_superclasses;
+	node->right = body;
+	node->rightType = no_of_nodes;
+	node->else_block = class_name;
 	return node;
 }
 
@@ -170,7 +221,8 @@ Node* VarAssignNode(void* left, Token* val, void* right, int leftType, int right
 {
 	if(
 		leftType != TT_VAR && leftType != TT_CHANGE && 
-		leftType != INDEX_NODE && leftType != VAR_NODE
+		leftType != INDEX_NODE && leftType != VAR_NODE && 
+		leftType != OBJECT_NODE
 	)
 		return ErrorNode(
 			make_error(
@@ -289,6 +341,8 @@ Node* boolean_statement(Token** tokens, int size, int* curr_index);
 Node* make_IndexNode(Node* starter, Token** tokens, int size, int* curr_index);
 
 Node* operation(Token** tokens, int size, int* curr_index, int type_of_operation);
+
+Node* make_ObjectNode(Node* left, Token** tokens, int size, int* curr_index);
 
 Node* make_LoopNode(Token** tokens, int size, int* curr_index){
 	int max_block_size = 10, i, block_size = 0;
@@ -826,6 +880,8 @@ Node* make_FunctionCallNode(Token** tokens, int size, int* curr_index, int isVar
 	Node* node = FunctionCallNode(val_token, parameters, no_of_parameters);
 	if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_ARRAY_OPEN)
 		return make_IndexNode(node, tokens, size, curr_index);
+	else if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_DOT)
+		return make_ObjectNode(node, tokens, size, curr_index);
 	else
 		return node;
 }
@@ -932,18 +988,183 @@ Node* make_IndexNode(Node* starter, Token** tokens, int size, int* curr_index){
 			make_IndexNode(node, tokens, size, curr_index) : node;
 }
 
-Node* make_VarNode(Token** tokens, int size, int* curr_index){
-	Node* node = VarNode(tokens[*curr_index]);
+Node* make_ObjectNode(Node* left, Token** tokens, int size, int* curr_index){
+	ASSERT_NOT_EOF(*curr_index, size, tokens);
+	if(tokens[*curr_index]->type != TT_DOT){
+		return ErrorNode(
+			make_error(
+				SyntaxError("'.'", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+				tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+			)
+		);
+	}
+	Token* val = tokens[*curr_index];
 	(*curr_index)++;
-	if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_LPAREN){
-		(*curr_index)--;
-		return make_FunctionCallNode(tokens, size, curr_index, 0);
+	Node* right = value(tokens, size, curr_index);
+	if(right->nodeType == ERROR_NODE)
+		return right;
+	else if(right->nodeType != VAR_NODE && right->nodeType != FUNCTION_CALL_NODE && right->nodeType != OBJECT_NODE){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"varName/methodName(...)", 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+			)
+		);
 	}
-	else if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_ARRAY_OPEN){
-		return make_IndexNode(node, tokens, size, curr_index);
+	Node* node = ObjectNode(val, left, right);
+	return !IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_ARRAY_OPEN ? 
+			make_IndexNode(node, tokens, size, curr_index) : node;
+}
+
+Node* make_VarNode(Token** tokens, int size, int* curr_index){
+	Node* node = tokens[*curr_index]->type == TT_THIS ? ThisNode(tokens[*curr_index]) : VarNode(tokens[*curr_index]);
+	(*curr_index)++;
+
+	if(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type == TT_DOT){
+		return make_ObjectNode(node, tokens, size, curr_index);
 	}
-	else
-		return node;
+	else if(!IS_EOA(*curr_index, size) && node->nodeType != TT_THIS){
+		if(tokens[*curr_index]->type == TT_LPAREN){
+			(*curr_index)--;
+			return make_FunctionCallNode(tokens, size, curr_index, 0);
+		}
+		else if(tokens[*curr_index]->type == TT_ARRAY_OPEN){
+			return make_IndexNode(node, tokens, size, curr_index);
+		}
+	}
+	
+	return node;
+}
+
+Node* make_ClassDefinitionNode(Token** tokens, int size, int* curr_index){
+	if(IS_EOA(*curr_index, size) || tokens[*curr_index]->type != TT_CLASS){
+		return NULL;
+	}
+	Token* val = tokens[*curr_index];
+	(*curr_index)++;
+	ASSERT_NOT_EOF(*curr_index, size, tokens);
+	if(tokens[*curr_index]->type != TT_VAR){
+		return ErrorNode(
+			make_error(
+				SyntaxError("'className'", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+				tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+			)
+		);
+	}
+	
+	Node* className = value(tokens, size, curr_index);
+	if(className->nodeType != VAR_NODE){
+		return ErrorNode(
+			make_error(
+				SyntaxError(
+					"'className'", 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no, 
+					IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+				),
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no, 
+				IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+			)
+		);
+	}
+	
+	ASSERT_NOT_EOF(*curr_index, size, tokens);
+
+	int no_of_superclasses = 0, total_no_of_superclasses = 0;
+	int hasPassed = 0, isFinished = 0;
+	int no_of_nodes, total_no_of_nodes = 0;
+	Node **superclasses = NULL, **body = NULL;
+	Node* temp_node = NULL;
+	if(tokens[*curr_index]->type == TT_INHERITS){
+		// (*curr_index)++;
+		total_no_of_superclasses = 5;
+		superclasses = (Node**)allocate_ptr_array(total_no_of_superclasses, sizeof(Node*));
+		while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_OPEN && !isFinished){
+			(*curr_index)++;
+			temp_node = Parser(tokens, size, curr_index, 0);
+			if(IS_EOA(*curr_index, size) || temp_node->nodeType != VAR_NODE){
+				return ErrorNode(
+					make_error(
+						SyntaxError(
+							"'className'", 
+							IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no, 
+							IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+						),
+						IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no, 
+						IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+					)
+				);
+			}
+
+			superclasses[no_of_superclasses] = temp_node;
+			no_of_superclasses++;
+			if(no_of_superclasses >= total_no_of_superclasses)
+				expand_block(&superclasses, &total_no_of_superclasses);
+			
+			isFinished = tokens[*curr_index]->type == TT_COMMA ? 0 : 1;
+		}
+
+		ASSERT_NOT_EOF(*curr_index, size, tokens);
+		if(!no_of_superclasses){
+			return ErrorNode(
+				make_error(
+					SyntaxError("superClassName", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+					tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+				)
+			);
+		}
+		else if(tokens[*curr_index]->type != TT_BLOCK_OPEN){
+			return ErrorNode(
+				make_error(
+					SyntaxError("'{'", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+					tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+				)
+			);
+		}
+		else if(!isFinished){
+			return ErrorNode(
+				make_error(
+					SyntaxError("atleast one more parentClass", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+					tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+				)
+			);
+		}
+	}
+
+	if(tokens[*curr_index]->type != TT_BLOCK_OPEN){
+		return ErrorNode(
+			make_error(
+				SyntaxError("'{'", tokens[*curr_index]->line_no, tokens[*curr_index]->col_no),
+				tokens[*curr_index]->line_no, tokens[*curr_index]->col_no
+			)
+		);
+	}
+
+	(*curr_index)++;
+	isFinished = 0;
+	total_no_of_nodes = 10;
+	body = (Node**)allocate_ptr_array(total_no_of_nodes, sizeof(Node*));
+	temp_node = NULL;
+	no_of_nodes = 0;
+	while(!IS_EOA(*curr_index, size) && tokens[*curr_index]->type != TT_BLOCK_CLOSE){
+		temp_node = Parser(tokens, size, curr_index, 0);
+		if(temp_node->nodeType == ERROR_NODE)
+			return temp_node;
+		
+		body[no_of_nodes] = temp_node;
+		no_of_nodes++;
+		if(no_of_nodes >= total_no_of_nodes){
+			expand_block(&body, &total_no_of_nodes);
+		}
+	}
+	ASSERT_NOT_EOF(*curr_index, size, tokens);
+
+	(*curr_index)++;
+	return ClassDefinitionNode(val, superclasses, no_of_superclasses, body, no_of_nodes, className);
 }
 
 Node* value(Token** tokens, int size, int* curr_index)
@@ -1293,6 +1514,35 @@ Node* value(Token** tokens, int size, int* curr_index)
 		case TT_ARRAY_OPEN:{
 			return make_ArrayNode(tokens, size, curr_index);
 		}
+		case TT_CLASS:{
+			return make_ClassDefinitionNode(tokens, size, curr_index);
+		}
+		case TT_THIS:{
+			return make_VarNode(tokens, size, curr_index);
+		}
+		case TT_STATIC:{
+			Token* val = tokens[*curr_index];
+			(*curr_index)++;
+			ASSERT_NOT_EOF(*curr_index, size, tokens);
+			Node* right = Parser(tokens, size, curr_index, 0);
+			if(right->nodeType == ERROR_NODE)
+				return right;
+			else if(right->nodeType != FUNCTION_DEFINITION_NODE){
+				return ErrorNode(
+					make_error(
+						SyntaxError(
+							"'function'", 
+							IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+							IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+						),
+						IS_EOA(*curr_index, size) ? tokens[size - 1]->line_no : tokens[*curr_index]->line_no,
+						IS_EOA(*curr_index, size) ? tokens[size - 1]->col_no : tokens[*curr_index]->col_no
+					)
+				);
+			}
+
+			return StaticFunctionDefinitionNode(val, right);
+		}
 		default:{
 			return ErrorNode(
 				make_error(
@@ -1474,7 +1724,7 @@ Node* Parser(Token** tokens, int size, int* curr_index, int isVarNode)
 {
 	// printf("yay\n");
 	int temp_index = *curr_index;
-	if(tokens[*curr_index]->type == TT_VAR)
+	if(tokens[*curr_index]->type == TT_VAR || tokens[*curr_index]->type == TT_THIS)
 	{
 		Node* left = make_VarNode(tokens, size, &temp_index);
 		// temp_index++;

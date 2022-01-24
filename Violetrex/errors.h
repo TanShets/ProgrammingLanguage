@@ -17,6 +17,9 @@
 #define INDEX_ERROR 9
 #define MISMATCH_ERROR 10
 #define INVALID_FUNCTION_NAME_ERROR 11
+#define INVALID_STATIC_FUNCTION_NAME_ERROR 12
+#define CLASS_SYNTAX_ERROR 13
+#define METHOD_NOT_FOUND_ERROR 14
 
 typedef struct ERROR{
     int errType;
@@ -219,4 +222,37 @@ Error* InvalidFunctionNameError(char* var_name, int nodeType, int line_no, int c
             strcat(statement, "'");
     }
     return construct_Error(INVALID_FUNCTION_NAME_ERROR, statement, line_no, col_no);
+}
+
+Error* InvalidStaticFunctionNameError(char* var_name, int nodeType, int line_no, int col_no){
+    char statement[100] = {"Invalid name for static function '"};
+    int length = strlen(statement) + strlen(var_name);
+    strncat(statement, var_name, strlen(var_name));
+    statement[length] = '\0';
+    switch(nodeType){
+        case 17:{
+            strcat(statement, "[...]'");
+            break;
+        }
+        case 14:{
+            strcat(statement, "(...)'");
+            break;
+        }
+        default:
+            strcat(statement, "'");
+    }
+    return construct_Error(INVALID_STATIC_FUNCTION_NAME_ERROR, statement, line_no, col_no);
+}
+
+Error* ClassSyntaxError(char* statement, int line_no, int col_no){
+    return construct_Error(CLASS_SYNTAX_ERROR, statement, line_no, col_no);
+}
+
+Error* MethodNotFoundError(char* varname, char* no_of_params, int line_no, int col_no){
+    char statement[100] = {"Method '"};
+    strncpy(statement + strlen(statement), varname, strlen(varname));
+    strcat(statement, "' with ");
+    strcat(statement, no_of_params);
+    strcat(statement, " parameters not defined");
+    return construct_Error(METHOD_NOT_FOUND_ERROR, statement, line_no, col_no);
 }

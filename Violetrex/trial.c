@@ -1,14 +1,23 @@
 #include <stdio.h>
 #include "symbols.h"
+#include "Lexer.h"
+
+#define ASSERT_NOT_EOF(curr_index, size, tokens) ({\
+	if(IS_EOA(curr_index, size)){\
+		return tokens;\
+	}\
+})
 
 int add(int a, int b)
 {
+	ASSERT_NOT_EOF(a, b, -1);
 	return a + b;
 }
 
-extern void exit(int __status) __THROW __attribute__ ((__noreturn__));
+// extern void exit(int __status) __THROW __attribute__ ((__noreturn__));
 
-void overflow(void) __THROW __attribute__((noreturn));
+// void overflow(void) __THROW __attribute__((noreturn));
+void overflow(void);
 
 int main(){
 	start_Dynamic_Mem();
@@ -31,12 +40,18 @@ int main(){
 	printf("Finally %d\n", HEAP_PTR_GREATER(ptr1, ptr2));
 	printf("Finally %d\n", HEAP_PTR_GREATER_EQ(ptr1, ptr2));
 	printf("Size of heap list %d\n", sizeof(heap_block));
-	exit(0);
+	// exit(0);
+	void** pttt = allocate_ptr_for_size(sizeof(void*));
+	printf("Pointer is %p\n", *pttt);
+	*pttt = NULL;
+	printf("Pointer is %p\n", *pttt);
 	overflow();
 	return 0;
 }
 
 void overflow(void){
 	printf("Made it to overflow\n");
-	while(1);
+	printf("Sum is %d\n", add(5, 5));
+	// exit(0);
+	// while(1);
 }

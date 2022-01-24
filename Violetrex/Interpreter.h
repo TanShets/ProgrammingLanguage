@@ -2,6 +2,7 @@
 #include "value.h"
 #include "default_functions.h"
 #include "array_value.h"
+#include "class_context/class_context.h"
 
 #define DEFAULT_NO_OF_VALUES 10
 
@@ -71,11 +72,13 @@ void expand_Values(Value*** values, int* no_of_values, int new_no_of_values){
     // free(temp);
 }
 
-Value* getFunctionCallValue(Node* node, Context* context, int* isNode);
+Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
 
-Value* getIndexValue(Node* node, Context* context, int* isNode);
+Value* getIndexValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
+Value* getClassDefinitionValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
+Value* getObjectValue(Node* node, Context* context, int* isNode, int method_flag, void* needed_context);
 
-Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
+Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context, int* isNode, int flag_type, void* context_needed){
     if(node->nodeType != CONDITIONAL_NODE)
         return NULL;
     
@@ -89,7 +92,7 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
     int i = 0, flag = 0, j;
     Interpreter* temp_interpreter;
     while(i < n){
-        temp_val = viewNode(statements[i], context, isNode);
+        temp_val = viewNode(statements[i], context, isNode, flag_type, context_needed);
         switch(temp_val->valType){
             case TT_TRUE:
                 flag = 1;
@@ -113,7 +116,7 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
     }
 
     if(i < n){
-        temp_interpreter = Interpret(blocks[i], block_lengths[i], context, isNode);
+        temp_interpreter = Interpret(blocks[i], block_lengths[i], context, isNode, flag_type, context_needed);
         *no_of_values = temp_interpreter->no_of_values;
         values = temp_interpreter->values;
         // values = (Value**)calloc(block_lengths[i], sizeof(Value*));
@@ -131,7 +134,7 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
     }
     else{
         if(node->else_block != NULL){
-            temp_interpreter = Interpret(node->else_block, node->isVarNode, context, isNode);
+            temp_interpreter = Interpret(node->else_block, node->isVarNode, context, isNode, flag_type, context_needed);
             *no_of_values = temp_interpreter->no_of_values;
             values = temp_interpreter->values;
             // values = (Value**)calloc(node->isVarNode, sizeof(Value*));
@@ -166,7 +169,7 @@ Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context,
     }
 }
 
-Value* getArrayValue(Node* node, Context* context, int* isNode){
+Value* getArrayValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
     if(node->nodeType != ARRAY_NODE)
         return NULL;
     Value* val = construct_Value(node->val);
@@ -176,10 +179,10 @@ Value* getArrayValue(Node* node, Context* context, int* isNode){
     Value *temp_key, *temp_val;
     int i;
     for(i = 0; i < node->rightType; i++){
-        temp_key = keys[i] != NULL ? viewNode(keys[i], context, isNode) : NULL;
+        temp_key = keys[i] != NULL ? viewNode(keys[i], context, isNode, flag_type, context_needed) : NULL;
         if(temp_key != NULL && temp_key->valType == TT_ERROR)
             return temp_key;
-        temp_val = viewNode(values[i], context, isNode);
+        temp_val = viewNode(values[i], context, isNode, flag_type, context_needed);
         if(temp_val->valType == TT_ERROR)
             return temp_val;
         
@@ -189,11 +192,73 @@ Value* getArrayValue(Node* node, Context* context, int* isNode){
     return val;
 }
 
-Value* viewNode(Node* node, Context* context, int* isNode){
+Value* getVarValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+	Token* nodeVal = (Token*)(node->val);
+	char* key = (char*)(nodeVal->val);
+    Value* val = NULL;
+    ObjectContext* objectContext = NULL;
+    ClassContext* classContext = NULL;
+	void** answer = search_from_local_context(context, key);
+	int line_no = nodeVal->line_no, col_no = nodeVal->col_no;
+	Token* token;
+	if(answer[1] != NULL && *((int*)answer[1]) != TT_ERROR){
+		// token = (Token*)malloc(sizeof(Token));
+		token = (Token*)allocate_ptr_for_size(sizeof(Token));
+		token->type = *((int*)answer[1]);
+		token->val = answer[0];
+		token->line_no = node->val->line_no, token->col_no = node->val->col_no;
+		return construct_Value(token);
+	}
+    else if(flag_type != -1 && context_needed != NULL){
+        switch(flag_type){
+            case IS_INSTANCE_METHOD:{
+                objectContext = (ObjectContext*)(context_needed);
+                classContext = objectContext->static_context;
+                val = find_instance_var_from_ObjectContext(objectContext, key);
+                if(val == NULL)
+                    val = find_static_var_in_ClassContext(classContext, key);
+                break;
+            }
+            case IS_STATIC_METHOD:{
+                val = find_static_var_in_ClassContext(classContext, key);
+                break;
+            }
+            case IS_CONSTRUCTOR:{
+                objectContext = (ObjectContext*)(context_needed);
+                classContext = objectContext->static_context;
+                val = find_instance_var_from_ObjectContext(objectContext, key);
+                if(val == NULL)
+                    val = find_static_var_in_ClassContext(classContext, key);
+                break;
+            }
+        }
+
+        if(val != NULL)
+            return val;
+    }
+	
+    answer = search_from_context(context, key);
+    if(answer[1] != NULL && *((int*)answer[1]) != TT_ERROR){
+		// token = (Token*)malloc(sizeof(Token));
+		token = (Token*)allocate_ptr_for_size(sizeof(Token));
+		token->type = *((int*)answer[1]);
+		token->val = answer[0];
+		token->line_no = node->val->line_no, token->col_no = node->val->col_no;
+		return construct_Value(token);
+	}
+
+    return construct_Value(
+        make_error(
+            ValueNotFoundError(key, line_no, col_no), line_no, col_no
+        )
+    );
+}
+
+Value* viewNode(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
 	Value* answer = NULL;
 	switch(node->nodeType){
         case VAR_ASSIGN_NODE:{
-            answer = getVarAssignValue(node, context, isNode);
+            answer = getVarAssignValue(node, context, isNode, flag_type, context_needed);
             break;
         }
 		case NUM_NODE:{
@@ -209,15 +274,15 @@ Value* viewNode(Node* node, Context* context, int* isNode){
 			break;
 		}
 		case BIN_OP_NODE:{
-			answer = getBinOpValue(node, context, isNode);
+			answer = getBinOpValue(node, context, isNode, flag_type, context_needed);
 			break;
 		}
 		case UN_OP_NODE:{
-			answer = getUnOpValue(node, context, isNode);
+			answer = getUnOpValue(node, context, isNode, flag_type, context_needed);
 			break;
 		}
 		case VAR_NODE:{
-			answer = getVarValue(node, context);
+			answer = getVarValue(node, context, isNode, flag_type, context_needed);
 			break;
 		}
 		case BREAK_NODE:{
@@ -233,15 +298,23 @@ Value* viewNode(Node* node, Context* context, int* isNode){
             break;
         }
         case FUNCTION_CALL_NODE:{
-            answer = getFunctionCallValue(node, context, isNode);
+            answer = getFunctionCallValue(node, context, isNode, flag_type, context_needed);
             break;
         }
         case ARRAY_NODE:{
-            answer = getArrayValue(node, context, isNode);
+            answer = getArrayValue(node, context, isNode, flag_type, context_needed);
             break;
         }
         case INDEX_NODE:{
-            answer = getIndexValue(node, context, isNode);
+            answer = getIndexValue(node, context, isNode, flag_type, context_needed);
+            break;
+        }
+        case CLASS_DEFINITION_NODE:{
+            answer = getClassDefinitionValue(node, context, isNode, flag_type, context_needed);
+            break;
+        }
+        case OBJECT_NODE:{
+            answer = getObjectValue(node, context, isNode, flag_type, context_needed);
             break;
         }
 		default:{
@@ -289,9 +362,304 @@ int isNegativeValue(Value* value){
     }
 }
 
-Value* getIndexValue(Node* node, Context* context, int* isNode){
+Value* getMethodValue(Node* node, Context* context, int* isNode, int method_flag, void* needed_context, Node* fn_call){
+    ObjectContext* objectContext = NULL;
+    ClassContext* classContext = NULL;
+    Token* token = NULL;
+    Value* value = NULL;
+    if(needed_context == NULL)
+        return NULL;
+
+    // switch(method_flag){
+    //     case IS_CONSTRUCTOR:{
+    //         objectContext = (ObjectContext*)needed_context;
+    //         classContext = objectContext->static_context;
+    //         break;
+    //     }
+    //     case IS_INSTANCE_METHOD:{
+    //         objectContext = (ObjectContext*)needed_context;
+    //         classContext = objectContext->static_context;
+    //         break;
+    //     }
+    //     case IS_STATIC_METHOD:{
+    //         classContext = (ClassContext*)needed_context;
+    //         break;
+    //     }
+    // }
+
+    Node* fn_defn = node;
+    int block_size = fn_defn->rightType;
+    Node** block = (Node**)fn_defn->right;
+    Node** parameters = (Node**)fn_defn->left;
+    Node** param_vals = (Node**)fn_call->left;
+    int no_of_parameters = fn_call->leftType;
+    int i;
+    Value* temp_value;
+    Interpreter* temp_interpreter;
+    Context* function_context = construct_Context();
+    char* key = NULL;
+    function_context->parent = context;
+    for(i = 0; i < no_of_parameters; i++){
+        key = (char*)(((Token*)parameters[i]->val)->val);
+        temp_value = viewNode(param_vals[i], context, isNode, method_flag, needed_context);
+        modify_context(function_context, key, temp_value->num, temp_value->valType);
+    }
+    isNode[1]++;
+    temp_interpreter = Interpret(block, block_size, function_context, isNode, method_flag, needed_context);
+    if(temp_interpreter->no_of_values == 1 && (isNode[1] < 0 || isNode[2] > 0)){
+        if(isNode[1] < 0)
+            isNode[1] *= -1;
+        return *(temp_interpreter->values);
+    }
+    else{
+        token = (Token*)allocate_ptr_for_size(sizeof(Token));
+        token->type = TT_NULL;
+        char* word = {"null"};
+        token->val = word, token->line_no = ((Token*)node->val)->line_no;
+        token->col_no = ((Token*)node->val)->col_no;
+        return construct_Value(token);
+    }
+    return value;
+}
+
+Value* getObjectValue(Node* node, Context* context, int* isNode, int method_flag, void* needed_context){
+    if(node->nodeType != OBJECT_NODE)
+        return NULL;
+    Node* object = (Node*)(node->left);
+    int isStatic = 0;
+    char* name = NULL;
+    ClassContext* classContext = NULL;
+    ObjectContext* objectContext = NULL;
+    Value* object_val = NULL;
+    switch (object->nodeType)
+    {
+        case VAR_NODE:{
+            name = (char*)(object->val->val);
+            void** result = search_from_context(context, name);
+            if(*((int*)result[1]) == TT_CLASS){
+                classContext = (ClassContext*)(result[0]);
+                isStatic = 1;
+            }
+            else{
+                object_val = viewNode(object, context, isNode, method_flag, needed_context);
+                if(object_val == NULL){
+                    return construct_Value(
+                        make_error(
+                            NullOperationError(".", object->val->line_no, object->val->col_no),
+                            object->val->line_no, object->val->col_no
+                        )
+                    );
+                }
+                else if(object_val != NULL && object_val->valType != TT_OBJECT){
+                    return construct_Value(
+                        make_error(
+                            SyntaxError("Object", object->val->line_no, object->val->col_no),
+                            object->val->line_no, object->val->col_no
+                        )
+                    );
+                }
+                objectContext = (ObjectContext*)(object_val->num);
+            }
+            break;
+        }
+        case THIS_NODE:{
+            if(isNode[3] > 0 && needed_context != NULL)
+                objectContext = (ObjectContext*)needed_context;
+            else{
+                return construct_Value(
+                    make_error(
+                        ClassSyntaxError(
+                            "'this' cannot be used outside of a class",
+                            object->val->line_no, object->val->col_no
+                        ), object->val->line_no, object->val->col_no
+                    )
+                );
+            }
+            break;
+        }
+        default:{
+            object_val = viewNode(object, context, isNode, method_flag, needed_context);
+            objectContext = (ObjectContext*)(object_val->num);
+            if(object_val != NULL && object_val->valType != TT_OBJECT){
+                return construct_Value(
+                    make_error(
+                        SyntaxError("'Object'", object->val->line_no, object->val->col_no),
+                        object->val->line_no, object->val->col_no
+                    )
+                );
+            }
+        }
+    }
+    
+    // objectContext = isStatic ? NULL : (ObjectContext*)(object_val->num);
+    classContext = isStatic ? classContext : objectContext->static_context;
+    char* className = classContext->className;
+    Node* right = (Node*)(node->right);
+    Value* value = NULL;
+    Node* function_node = NULL;
+    char* key = NULL;
+    switch(right->nodeType){
+        case VAR_NODE:{
+            key = (char*)(right->val->val);
+            if(isStatic){
+                value = find_static_var_in_ClassContext(classContext, key);
+            }
+            else{
+                value = (Value*)find_instance_var_from_ObjectContext(objectContext, key);
+                if(value == NULL)
+                    value = find_static_var_in_ClassContext(classContext, key);
+            }
+            return value;
+        }
+        case FUNCTION_CALL_NODE:{
+            name = (char*)(right->val->val);
+            if(strcmp(name, "constructor") == 0 || strcmp(name, className) == 0){
+                return construct_Value(
+                    make_error(
+                        InvalidStaticFunctionNameError(name, FUNCTION_CALL_NODE, right->val->line_no, right->val->col_no),
+                        right->val->line_no, right->val->col_no
+                    )
+                );
+            }
+            char* num_params = INT_TO_STR(right->leftType);
+            char* temp_name = (char*)allocate_ptr_array(strlen(name) + strlen(num_params) + 5, sizeof(char));
+            strncpy(temp_name, name, strlen(name));
+            temp_name[strlen(name)] = '\0';
+            strcat(temp_name, num_params);
+            name = temp_name;
+            int flag_used = -1;
+
+            if(isStatic){
+                function_node = find_static_method_in_ClassContext(classContext, name);
+                flag_used = IS_STATIC_METHOD;
+            }
+            else{
+                function_node = find_instance_method_in_ClassContext(classContext, name);
+                flag_used = IS_INSTANCE_METHOD;
+                if(function_node == NULL){
+                    function_node = find_static_method_in_ClassContext(classContext, name);
+                    flag_used = IS_STATIC_METHOD;
+                }
+                
+                if(function_node == NULL){
+                    return construct_Value(
+                        make_error(
+                            FunctionNotFoundError(
+                                (char*)(right->val->val), num_params, right->val->line_no, right->val->col_no
+                            ),
+                            right->val->line_no, right->val->col_no
+                        )
+                    );
+                }
+            }
+            isNode[3]++;
+            value = getMethodValue(
+                function_node, context, isNode, flag_used, 
+                flag_used == IS_STATIC_METHOD ? (void*)classContext : (void*)objectContext,
+                right
+            );
+            isNode[3]--;
+            return value;
+        }
+    }
+    return value;
+}
+
+Value* getClassDefinitionValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+    if(node->nodeType != CLASS_DEFINITION_NODE)
+        return NULL;
+    
+    Node **superclasses = (Node**)node->left, **body = (Node**)node->right;
+    int no_of_superclasses = node->leftType, no_of_nodes = node->rightType;
+    char* className = (char*)(((Node*)node->else_block)->val->val);
+    void** temp_result = search_from_context(context, className);
+    int type = *((int*)(temp_result[1]));
+    if(type != TT_ERROR){}
+    ClassContext* classContext = construct_ClassContext(className);
+    Node* temp_node = NULL;
+    int i;
+    isNode[3]++;
+    for(i = 0; i < no_of_nodes; i++){
+        temp_node = body[i];
+        switch(temp_node->nodeType){
+            case FUNCTION_DEFINITION_NODE:{
+                char* func_name = (char*)(((Token*)(temp_node->else_block))->val);
+                if(strcmp(func_name, "constructor") == 0 || strcmp(func_name, className) == 0){
+                    int outcome = insert_constructor_into_ClassContext(classContext, temp_node->leftType, temp_node);
+                    if(!outcome){
+                        exit(0);
+                    }
+                }
+                else{
+                    char* num_params = INT_TO_STR(temp_node->leftType);
+                    char* temp_name = (char*)allocate_ptr_array(strlen(func_name) + strlen(num_params) + 5, sizeof(char));
+                    strncpy(temp_name, func_name, strlen(func_name));
+                    temp_name[strlen(func_name)] = '\0';
+                    strcat(temp_name, num_params);
+                    modify_instance_method_in_ClassContext(classContext, temp_name, temp_node);
+                }
+                break;
+            }
+            case STATIC_FUNCTION_DEFINITION_NODE:{
+                Node* func = (Node*)(temp_node->right);
+                char* func_name = (char*)(((Token*)(func->else_block))->val);
+                char* num_params = INT_TO_STR(node->leftType);
+                char* temp_name = (char*)allocate_ptr_array(strlen(func_name) + strlen(num_params) + 5, sizeof(char));
+                strncpy(temp_name, func_name, strlen(func_name));
+                temp_name[strlen(func_name)] = '\0';
+                strcat(temp_name, num_params);
+                if(strcmp(func_name, "constructor") == 0 || strcmp(func_name, className) == 0){
+                    return construct_Value(
+                        make_error(
+                            InvalidStaticFunctionNameError(
+                                func_name, FUNCTION_CALL_NODE, temp_node->val->line_no, temp_node->val->col_no
+                            ),
+                            temp_node->val->line_no, temp_node->val->col_no
+                        )
+                    );
+                }
+                modify_static_method_in_ClassContext(classContext, temp_name, func);
+                break;
+            }
+            case VAR_ASSIGN_NODE:{
+                Node* left = (Node*)temp_node->left;
+                if(left->nodeType != VAR_NODE){
+                    return construct_Value(
+                        make_error(
+                            SyntaxError("varName", left->val->line_no, left->val->col_no),
+                            left->val->line_no, left->val->col_no
+                        )
+                    );
+                }
+                char* name = (char*)(left->val->val);
+                Node* right = (Node*)(temp_node->right);
+                Value* right_val = viewNode(right, context, isNode, flag_type, context_needed);
+                if(right_val != NULL && right_val->valType != TT_ERROR){
+                    modify_static_var_in_ClassContext(classContext, name, right_val);
+                }
+                break;
+            }
+        }
+    }
+    isNode[3]--;
+    Node* default_constructor = get_constructor_from_ClassContext(classContext, 0);
+    Token* token = allocate_ptr_for_size(sizeof(Token));
+    token->type = TT_NULL;
+    token->val = null_key_for_class_context;
+    token->line_no = -1, token->col_no = -1;
+    if(default_constructor == NULL){
+        Node* new_constructor = NullNode(token);
+        i = insert_constructor_into_ClassContext(classContext, 0, new_constructor);
+        if(!i)
+            exit(0);
+    }
+    modify_context(context, className, classContext, TT_CLASS);
+    return construct_Value(token);
+}
+
+Value* getIndexValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
     Node* starter = (Node*)(node->left);
-    Value* arr_val = viewNode(starter, context, isNode);
+    Value* arr_val = viewNode(starter, context, isNode, flag_type, context_needed);
     if(arr_val->valType != TT_ARRAY){
         char foofighter[] = {"foo"};
         char* key = starter->nodeType == VAR_NODE || 
@@ -308,11 +676,11 @@ Value* getIndexValue(Node* node, Context* context, int* isNode){
     Node** indices = (Node**)(node->right);
     int count = node->rightType;
 
-    Value *temp_key, *temp_val;
+    Value *temp_key, *temp_val = NULL;
     // Value** values = count > 1 ? (Value**)calloc(count, sizeof(Value*)) : NULL;
     Value** values = count > 1 ? (Value**)allocate_ptr_array(count, sizeof(Value*)) : NULL;
     for(int i = 0; i < count; i++){
-        temp_key = viewNode(indices[i], context, isNode);
+        temp_key = viewNode(indices[i], context, isNode, flag_type, context_needed);
         if(temp_key->valType == TT_ERROR)
             return temp_key;
         
@@ -338,7 +706,7 @@ Value* getIndexValue(Node* node, Context* context, int* isNode){
         return temp_val;
 }
 
-Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* isNode){
+Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* isNode, int flag_type, void* context_needed){
     // Value** values = (Value**)calloc(DEFAULT_NO_OF_VALUES, sizeof(Value*));
     Value** values = (Value**)allocate_ptr_array(DEFAULT_NO_OF_VALUES, sizeof(Value*));
     int max_no_of_values = DEFAULT_NO_OF_VALUES;
@@ -350,9 +718,9 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
     int flag = 0;
     if(node->val->type == TT_WHILE){
         //statement_outcome = viewNode(node->left, context, isNode);
-        while(convertToBoolean(viewNode(node->left, context, isNode))){
+        while(convertToBoolean(viewNode(node->left, context, isNode, flag_type, context_needed))){
             isNode[0]++;
-            temp_interpreter = Interpret(node->right, node->rightType, context, isNode);
+            temp_interpreter = Interpret(node->right, node->rightType, context, isNode, flag_type, context_needed);
             if(*no_of_values + temp_interpreter->no_of_values >= max_no_of_values)
                 expand_Values(&values, &max_no_of_values, *no_of_values + temp_interpreter->no_of_values);
             
@@ -387,14 +755,14 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
         // a to b change = c, right: change = c
         Node* toVals = (Node*)(toNode->left);
         // a to b change = c, left: a to b
-        Value* change_val = viewNode(change_node, context, isNode);
+        Value* change_val = viewNode(change_node, context, isNode, flag_type, context_needed);
         condition->right = (Node*)toVals->left;
         // a to b, left: a, right: b
-        temp_value = viewNode(condition, context, isNode);
+        temp_value = viewNode(condition, context, isNode, flag_type, context_needed);
         // Assigns iterator which in this case x to a
         //From now the iterator will be incremented by value change until value b is attained or surpassed
         int criterion = isNegativeValue(change_val) ? TT_GREATER_THAN : TT_LESS_THAN;
-        Value* right_end = viewNode(toVals->right, context, isNode);
+        Value* right_end = viewNode(toVals->right, context, isNode, flag_type, context_needed);
         while(operateValues(temp_value, right_end, criterion, 0)->valType == TT_TRUE){
             if(hasStarted == 0){
                 hasStarted = 1;
@@ -403,14 +771,14 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
                 condition->rightType = change_node->nodeType;
             }
             isNode[0]++;
-            temp_interpreter = Interpret(node->right, node->rightType, context, isNode);
+            temp_interpreter = Interpret(node->right, node->rightType, context, isNode, flag_type, context_needed);
             if(*no_of_values + temp_interpreter->no_of_values >= max_no_of_values)
                 expand_Values(&values, &max_no_of_values, *no_of_values + temp_interpreter->no_of_values);
             
             // memcpy(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
             copy_heap_alloced_memory(values + *no_of_values, temp_interpreter->values, temp_interpreter->no_of_values * sizeof(Value*));
             *no_of_values += temp_interpreter->no_of_values;
-            temp_value = viewNode(condition, context, isNode);
+            temp_value = viewNode(condition, context, isNode, flag_type, context_needed);
             if(isNode[0] < 0){
                 isNode[0] *= -1;
                 flag = 1;
@@ -433,23 +801,103 @@ Value** getLoopNodeValue(Node* node, int* no_of_values, Context* context, int* i
     return values;
 }
 
-Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
-    Value* tempo_vals = default_function_control(node, context, isNode);
+Value* getConstructorValue(Node* node, Context* context, int* isNode, Node* constructor, ObjectContext* objectContext){
+    Node** param_vals = (Node**)(node->left);
+    int no_of_parameters = node->leftType;
+    Context* function_context = construct_Context();
+    function_context->parent = context;
+    isNode[3]++;
+    isNode[3]--;
+}
+
+Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+    Value* tempo_vals = default_function_control(node, context, isNode, flag_type, context_needed);
+    Token* token = NULL;
+    ObjectContext* objectContext = NULL;
+    ClassContext* classContext = NULL;
+    Node* potential_method_result = NULL;
     if(tempo_vals != NULL)
         return tempo_vals;
+    char* key = (char*)(node->val->val);
+    char *num = NULL, *temp_key = NULL;
+    int isStatic = 0;
+    num = INT_TO_STR(node->leftType);
+    // char* temp_key = (char*)calloc(strlen(key) + strlen(num) + 5, sizeof(char));
+    temp_key = (char*)allocate_ptr_array(strlen(key) + strlen(num) + 5, sizeof(char));
+    strncpy(temp_key, key, strlen(key));
+    strcat(temp_key, num);
+    if(flag_type != -1 && context_needed != NULL){
+        switch(flag_type){
+            case IS_INSTANCE_METHOD:{
+                objectContext = (ObjectContext*)(context_needed);
+                classContext = objectContext->static_context;
+                potential_method_result = find_instance_method_in_ClassContext(classContext, temp_key);
+                if(potential_method_result == NULL){
+                    potential_method_result = find_static_method_in_ClassContext(classContext, temp_key);
+                    isStatic = 1;
+                }
+                break;
+            }
+            case IS_STATIC_METHOD:{
+                classContext = (ClassContext*)(context_needed);
+                isStatic = 1;
+                potential_method_result = find_static_method_in_ClassContext(classContext, temp_key);
+                break;
+            }
+        }
+
+        if(potential_method_result != NULL){
+            isNode[3]++;
+            tempo_vals = getMethodValue(
+                potential_method_result, context, isNode, isStatic ? IS_STATIC_METHOD : IS_INSTANCE_METHOD,
+                isStatic ? (void*)classContext : (void*)objectContext, node
+            );
+            isNode[3]--;
+            return tempo_vals;
+        }
+    }
+
+    void** results = search_from_context(context, key);
+    if(*((int*)results[1]) == TT_CLASS){
+        classContext = (ClassContext*)(results[0]);
+        Node* constructor = get_constructor_from_ClassContext(classContext, node->leftType);
+        if(constructor == NULL){
+            return construct_Value(
+                make_error(
+                    FunctionNotFoundError(
+                        key, INT_TO_STR(node->leftType), node->val->line_no, node->val->col_no
+                    ),
+                    node->val->line_no, node->val->col_no
+                )
+            );
+        }
+        objectContext = construct_ObjectContext(classContext, null_key_for_class_context);
+        if(node->leftType != 0 || constructor->nodeType != NULL_NODE){
+            isNode[3]++;
+            tempo_vals = getMethodValue(constructor, context, isNode, IS_CONSTRUCTOR, objectContext, node);
+            isNode[3]--;
+            if(tempo_vals->valType == TT_ERROR)
+                return tempo_vals;
+        }
+        //  do constructor stuff here
+        token = allocate_ptr_for_size(sizeof(Token));
+        token->type = TT_OBJECT, token->val = objectContext;
+        token->line_no = node->val->line_no, token->col_no = node->val->col_no;
+        return construct_Value(token);
+    }
     // Value** values = (Value**)malloc(sizeof(Value*));
     Value** values = (Value**)allocate_ptr_for_size(sizeof(Value*));
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
-    char* key = (char*)(((Token*)node->val)->val);
-    char* num = INT_TO_STR(no_of_parameters);
-    // char* temp_key = (char*)calloc(strlen(key) + strlen(num) + 5, sizeof(char));
-    char* temp_key = (char*)allocate_ptr_array(strlen(key) + strlen(num) + 5, sizeof(char));
-    strncpy(temp_key, key, strlen(key));
-    strcat(temp_key, num);
+    // key = (char*)(((Token*)node->val)->val);
+    // num = INT_TO_STR(no_of_parameters);
+    // // char* temp_key = (char*)calloc(strlen(key) + strlen(num) + 5, sizeof(char));
+    // temp_key = (char*)allocate_ptr_array(strlen(key) + strlen(num) + 5, sizeof(char));
+    // strncpy(temp_key, key, strlen(key));
+    // strcat(temp_key, num);
     char* old_key = key;
     key = temp_key;
-    void** results = search_from_context(context, key);
+    results = search_from_context(context, key);
     if(*((int*)results[1]) != FUNCTION_DEFINITION_NODE)
     {
         *values = construct_Value(
@@ -465,7 +913,8 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
         isNode[2]++;
         return *values;
     }
-
+    void* needed_context = NULL;
+    int method_flag = -1;
     Node* fn_defn = (Node*)results[0];
     int block_size = fn_defn->rightType;
     Node** block = (Node**)fn_defn->right;
@@ -477,12 +926,12 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
     function_context->parent = context;
     for(i = 0; i < no_of_parameters; i++){
         key = (char*)(((Token*)parameters[i]->val)->val);
-        temp_value = viewNode(param_vals[i], context, isNode);
+        temp_value = viewNode(param_vals[i], context, isNode, flag_type, context_needed);
         modify_context(function_context, key, temp_value->num, temp_value->valType);
     }
 
     isNode[1]++;
-    temp_interpreter = Interpret(block, block_size, function_context, isNode);
+    temp_interpreter = Interpret(block, block_size, function_context, isNode, -1, NULL);
     if(temp_interpreter->no_of_values == 1 && (isNode[1] < 0 || isNode[2] > 0)){
         if(isNode[1] < 0)
             isNode[1] *= -1;
@@ -490,16 +939,75 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode){
     }
     else{
         // Token* token = (Token*)malloc(sizeof(Token));
-        Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
+        token = (Token*)allocate_ptr_for_size(sizeof(Token));
         token->type = TT_NULL;
         char* word = {"null"};
         token->val = word, token->line_no = ((Token*)node->val)->line_no;
         token->col_no = ((Token*)node->val)->col_no;
         return construct_Value(token);
     }
+    return NULL;
 }
 
-Value* getVarAssignValue(Node* node, Context* context, int* isNode){
+Value* extract_IndexNode_from_Object(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+    switch (node->nodeType)
+    {
+        case INDEX_NODE:{
+            Value* val = extract_IndexNode_from_Object((Node*)(node->left), context, isNode, flag_type, context_needed);
+            if(val->valType != TT_ARRAY){
+                return construct_Value(
+                    make_error(
+                        SyntaxError("variable of type 'array'", node->val->line_no, node->val->col_no),
+                        node->val->line_no, node->val->col_no
+                    )
+                );
+            }
+            ArrayValue* arrayValue = (ArrayValue*)(val->num);
+            Node** indices = (Node**)(node->right);
+            int count = node->rightType;
+            Value *temp_key, *temp_val = NULL;
+            // Value** values = count > 1 ? (Value**)calloc(count, sizeof(Value*)) : NULL;
+            Value** values = count > 1 ? (Value**)allocate_ptr_array(count, sizeof(Value*)) : NULL;
+            for(int i = 0; i < count; i++){
+                temp_key = viewNode(indices[i], context, isNode, flag_type, context_needed);
+                if(temp_key->valType == TT_ERROR)
+                    return temp_key;
+                
+                temp_val = find_in_ArrayValue(arrayValue, temp_key);
+                if(temp_val->valType == TT_ERROR)
+                    return temp_val;
+                
+                if(count > 1){
+                    values[i] = temp_val;
+                }
+            }
+
+            if(count > 1){
+                // temp_val = (Value*)malloc(sizeof(Value));
+                temp_val = (Value*)allocate_ptr_for_size(sizeof(Value));
+                temp_val->valType = TT_ARRAY;
+                temp_val->line_no = values[0]->line_no;
+                temp_val->col_no = values[1]->col_no;
+                temp_val->num = get_ArrayValue_from_values(values, count);
+                return temp_val;
+            }
+            else
+                return temp_val;
+        }
+        case VAR_NODE:
+            return flag_type == IS_CONSTRUCTOR || flag_type == IS_INSTANCE_METHOD ? 
+                    find_from_ObjectContext((ObjectContext*)(context_needed), (char*)(node->val->val), VAR_NODE) : 
+                    find_static_var_in_ClassContext((ClassContext*)(context_needed), (char*)(node->val->val));
+        case FUNCTION_CALL_NODE:
+            return flag_type == IS_CONSTRUCTOR || flag_type == IS_INSTANCE_METHOD ? 
+                    find_from_ObjectContext((ObjectContext*)(context_needed), (char*)(node->val->val), FUNCTION_CALL_NODE) : 
+                    find_static_method_in_ClassContext((ClassContext*)(context_needed), (char*)(node->val->val));
+        default:
+            return NULL;
+    }
+}
+
+Value* getVarAssignValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
 	char* key = NULL;
     Node* starter = NULL;
     Node* temp;
@@ -519,13 +1027,18 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
             key = (char*)(key_node->val->val);
             break;
         }
+        case OBJECT_NODE:{
+            starter = (Node*)(node->left);
+            temp = (Node*)starter->right;
+            break;
+        }
         default:{
             key = (char*)(((Token*)node->left)->val);
         }
     }
 	// printNode((Node*)(node->right), 0);
     Node* nodes = (Node*)node->right;
-    Interpreter* temp_interpreter = Interpret(&nodes, 1, context, isNode);
+    Interpreter* temp_interpreter = Interpret(&nodes, 1, context, isNode, flag_type, context_needed);
     int line_no = ((Token*)node->val)->line_no;
     int col_no = ((Token*)node->val)->col_no;
     if(temp_interpreter->no_of_values != 1){
@@ -541,20 +1054,33 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	Token* token;
 	void** answer = NULL;
     Value* temp_answer;
+    ClassContext* classContext = NULL;
+    ObjectContext* objectContext = NULL;
 	if(node->val->type != TT_EQ){
 		line_no = node->val->line_no;
 		col_no = node->val->col_no;
-        if(node->leftType == INDEX_NODE){
-            temp_answer = viewNode(starter, context, isNode);
-            // answer = (void**)calloc(2, sizeof(void*));
-            answer = (void**)allocate_ptr_array(2, sizeof(void*));
-            // answer[1] = (int*)malloc(sizeof(int));
-            answer[1] = (int*)allocate_ptr_for_size(sizeof(int));
-            *((int*)answer[1]) = temp_answer->valType;
-            answer[0] = temp_answer->num;
+        switch(node->leftType){
+            case INDEX_NODE: {
+                temp_answer = viewNode(starter, context, isNode, flag_type, context_needed);
+                // answer = (void**)calloc(2, sizeof(void*));
+                answer = (void**)allocate_ptr_array(2, sizeof(void*));
+                // answer[1] = (int*)malloc(sizeof(int));
+                answer[1] = (int*)allocate_ptr_for_size(sizeof(int));
+                *((int*)answer[1]) = temp_answer->valType;
+                answer[0] = temp_answer->num;
+                break;
+            }
+            case OBJECT_NODE:{
+                temp_answer = getObjectValue(starter, context, isNode, flag_type, context_needed);
+                answer = (void**)allocate_ptr_array(2, sizeof(void*));
+                answer[1] = (int*)allocate_ptr_for_size(sizeof(int));
+                *((int*)answer[1]) = temp_answer->valType;
+                answer[0] = temp_answer->num;
+                break;
+            }
+            default:
+                answer = search_from_context(context, key);
         }
-		else
-            answer = search_from_context(context, key);
         
 		if(
             answer[1] != NULL && *((int*)answer[1]) != TT_ERROR && 
@@ -604,73 +1130,314 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	
 	// printValue(val);
     int type_of_node = starter != NULL ? starter->nodeType : -1;
-	if(type_of_node == INDEX_NODE){
-        Node* array = (Node*)starter->left;
-        Value* array_value = viewNode(array, context, isNode);
-        if(array_value->valType != TT_ARRAY){
-            return construct_Value(
-                make_error(
-                    InvalidArrayOperationError(
-                        key, (char*)(node->val->val), line_no, col_no
-                    ), line_no, col_no
-                )
-            );
-        }
-        int count = starter->rightType;
-        Node** indices = (Node**)(starter->right);
-        Value *temp_key;
-        ArrayValue* arrayValue = (ArrayValue*)(array_value->num);
-        int i;
-        if(count <= 1){
-            temp_key = viewNode(*indices, context, isNode);
-            if(temp_key->valType == TT_ERROR)
-                return temp_key;
-            modify_ArrayValue(arrayValue, temp_key, val);
-        }
-        else{
-            if(val->valType != TT_ARRAY){
+    int isStatic = 0;
+    switch(type_of_node){
+        case INDEX_NODE:{
+            Node* array = (Node*)starter->left;
+            Value* array_value = viewNode(array, context, isNode, flag_type, context_needed);
+            if(array_value->valType != TT_ARRAY){
                 return construct_Value(
                     make_error(
-                        MisMatchError(key, line_no, col_no), line_no, col_no
+                        InvalidArrayOperationError(
+                            key, (char*)(node->val->val), line_no, col_no
+                        ), line_no, col_no
                     )
                 );
             }
-
-            ArrayValue* array_vals = (ArrayValue*)(val->num);
-            int vals_count = array_vals->curr_size;
-            if(count != vals_count){
-                return construct_Value(
-                    make_error(
-                        MisMatchError(key, line_no, col_no), line_no, col_no
-                    )
-                );
-            }
-            // Token* token = (Token*)malloc(sizeof(Token));
-            Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
-            token->type = TT_INT;
-            token->line_no = val->line_no, token->col_no = val->col_no;
-            // token->val = malloc(sizeof(int));
-            token->val = allocate_ptr_for_size(sizeof(int));
-            temp_key = construct_Value(token);
-            Value* temp_val;
-            for(i = 0; i < count; i++){
-                *((int*)temp_key->num) = i;
-                temp_val = find_in_ArrayValue(array_vals, temp_key);
-                if(temp_val->valType == TT_ERROR)
-                    return temp_val;
-                
-                temp_key = viewNode(indices[i], context, isNode);
+            int count = starter->rightType;
+            Node** indices = (Node**)(starter->right);
+            Value *temp_key;
+            ArrayValue* arrayValue = (ArrayValue*)(array_value->num);
+            int i;
+            if(count <= 1){
+                temp_key = viewNode(*indices, context, isNode, flag_type, context_needed);
                 if(temp_key->valType == TT_ERROR)
                     return temp_key;
-                
-                modify_ArrayValue(arrayValue, temp_key, temp_val);
+                modify_ArrayValue(arrayValue, temp_key, val);
             }
+            else{
+                if(val->valType != TT_ARRAY){
+                    return construct_Value(
+                        make_error(
+                            MisMatchError(key, line_no, col_no), line_no, col_no
+                        )
+                    );
+                }
+
+                ArrayValue* array_vals = (ArrayValue*)(val->num);
+                int vals_count = array_vals->curr_size;
+                if(count != vals_count){
+                    return construct_Value(
+                        make_error(
+                            MisMatchError(key, line_no, col_no), line_no, col_no
+                        )
+                    );
+                }
+                // Token* token = (Token*)malloc(sizeof(Token));
+                Token* token = (Token*)allocate_ptr_for_size(sizeof(Token));
+                token->type = TT_INT;
+                token->line_no = val->line_no, token->col_no = val->col_no;
+                // token->val = malloc(sizeof(int));
+                token->val = allocate_ptr_for_size(sizeof(int));
+                temp_key = construct_Value(token);
+                Value* temp_val;
+                for(i = 0; i < count; i++){
+                    *((int*)temp_key->num) = i;
+                    temp_val = find_in_ArrayValue(array_vals, temp_key);
+                    if(temp_val->valType == TT_ERROR)
+                        return temp_val;
+                    
+                    temp_key = viewNode(indices[i], context, isNode, flag_type, context_needed);
+                    if(temp_key->valType == TT_ERROR)
+                        return temp_key;
+                    
+                    modify_ArrayValue(arrayValue, temp_key, temp_val);
+                }
+            }
+            break;
+        }
+        case OBJECT_NODE:{
+            temp = (Node*)(starter->left);
+            switch(temp->nodeType){
+                case THIS_NODE:{
+                    if(isNode[3] > 0 && (flag_type == IS_INSTANCE_METHOD || flag_type == IS_CONSTRUCTOR) && context_needed != NULL){
+                        objectContext = (ObjectContext*)(context_needed);
+                        classContext = objectContext->static_context;
+                    }
+                    else{
+                        return construct_Value(
+                            make_error(
+                                ClassSyntaxError(
+                                    "Cannot use 'this' keyword outside instance method or constructor\n",
+                                    temp->val->line_no, temp->val->col_no
+                                ), temp->val->line_no, temp->val->col_no
+                            )
+                        );
+                    }
+                    break;
+                }
+                case VAR_NODE:{
+                    key = (char*)(temp->val->val);
+                    answer = search_from_context(context, key);
+                    isStatic = 0;
+                    int valType_answer = -1;
+                    if(*((int*)answer[1]) != TT_ERROR){
+                        valType_answer = *((int*)answer[1]);
+                        switch(valType_answer){
+                            case TT_OBJECT:{
+                                temp_answer = (Value*)(answer[0]);
+                                objectContext = (ObjectContext*)(temp_answer->num);
+                                classContext = objectContext->static_context;
+                                break;
+                            }
+                            case TT_CLASS:{
+                                isStatic = 1;
+                                objectContext = NULL;
+                                classContext = (ClassContext*)(answer[0]);
+                                break;
+                            }
+                            default:{
+                                return construct_Value(
+                                    make_error(
+                                        SyntaxError("variable of type 'Object'", temp->val->line_no, temp->val->col_no),
+                                        temp->val->line_no, temp->val->col_no
+                                    )
+                                );
+                            }
+                        }
+                    }
+                    else{
+                        if(isNode[3] > 0 && context_needed != NULL){
+                            switch(flag_type){
+                                case IS_INSTANCE_METHOD:{
+                                    objectContext = (ObjectContext*)(context_needed);
+                                    classContext = objectContext->static_context;
+                                    temp_answer = (Value*)find_from_ObjectContext(objectContext, key, VAR_NODE);
+                                    break;
+                                }
+                                case IS_STATIC_METHOD:{
+                                    objectContext = NULL;
+                                    classContext = (ClassContext*)(context_needed);
+                                    temp_answer = find_static_var_in_ClassContext(classContext, key);
+                                    break;
+                                }
+                                default:{
+                                    return construct_Value(
+                                        make_error(
+                                            ValueNotFoundError(key, temp->val->line_no, temp->val->col_no),
+                                            temp->val->line_no, temp->val->col_no
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                        else{
+                            return construct_Value(
+                                make_error(
+                                    ValueNotFoundError(key, temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+                    }
+                    break;
+                }
+                case INDEX_NODE:{
+                    temp_answer = getIndexValue(temp, context, isNode, flag_type, context_needed);
+                    if(temp_answer == NULL || temp_answer->valType != TT_OBJECT){
+                        return temp_answer != NULL && temp_answer->valType == TT_ERROR ? temp_answer : 
+                            construct_Value(
+                                make_error(
+                                    SyntaxError("variable of type 'Object'", temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                    }
+                    objectContext = (ObjectContext*)(temp_answer->num);
+                    classContext = (ClassContext*)(objectContext->static_context);
+                    break;
+                }
+                default:{
+                    return construct_Value(
+                        make_error(
+                            SyntaxError("varName", temp->val->line_no, temp->val->col_no),
+                            temp->val->line_no, temp->val->col_no
+                        )
+                    );
+                }
+            }
+            temp = (Node*)(starter->right);
+            Node *fp = NULL, *temp_node = NULL, *right = NULL;
+            char *name, *num_params, *temp_name;
+            while(temp != NULL && temp->nodeType == OBJECT_NODE){
+                fp = temp;
+                temp = (Node*)(temp->left);
+                switch(temp->nodeType){
+                    case VAR_NODE:{
+                        key = (char*)(temp->val->val);
+                        temp_answer = isStatic ? find_static_var_in_ClassContext(classContext, key) : 
+                                    find_instance_var_from_ObjectContext(objectContext, key);
+                        if(!isStatic && temp_answer == NULL)
+                            temp_answer = find_static_var_in_ClassContext(classContext, key);
+                        
+                        if(temp_answer == NULL){
+                            return construct_Value(
+                                make_error(
+                                    ValueNotFoundError(key, temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+                        else if(temp_answer->valType == TT_OBJECT){
+                            objectContext = (ObjectContext*)(temp_answer->num);
+                            classContext = objectContext->static_context;
+                        }
+                        else{
+                            return construct_Value(
+                                make_error(
+                                    SyntaxError("variable of type 'Object'", temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+                        break;
+                    }
+                    case INDEX_NODE:{
+                        temp_answer = extract_IndexNode_from_Object(
+                                        temp, context, isNode, 
+                                        isStatic ? IS_STATIC_METHOD : IS_INSTANCE_METHOD, 
+                                        isStatic ? (void*)classContext : (void*)objectContext
+                                    );
+                        if(temp_answer == NULL || temp_answer->valType != TT_OBJECT){
+                            return construct_Value(
+                                make_error(
+                                    SyntaxError("variable of type 'Object'", temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+                        objectContext = (ObjectContext*)(temp_answer->num);
+                        classContext = objectContext->static_context;
+                        break;
+                    }
+                    case FUNCTION_CALL_NODE:{
+                        name = (char*)(temp->val->val);
+                        num_params = INT_TO_STR(temp->leftType);
+                        temp_name = (char*)allocate_ptr_array(strlen(name) + strlen(num_params) + 5, sizeof(char));
+                        strncpy(temp_name, name, strlen(name));
+                        temp_name[strlen(name)] = '\0';
+                        strcat(temp_name, num_params);
+                        name = temp_name;
+
+                        temp_node = isStatic ? find_static_method_in_ClassContext(classContext, name) : 
+                                    (Node*)find_from_ObjectContext(objectContext, name, FUNCTION_CALL_NODE);
+                        
+                        if(temp_node == NULL){
+                            return construct_Value(
+                                make_error(
+                                    MethodNotFoundError(
+                                        (char*)(temp->val->val), num_params, temp->val->line_no, temp->val->col_no
+                                    ), temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+
+                        isStatic = isStatic ? isStatic : 
+                                    find_instance_method_in_ClassContext(classContext, key) == NULL ? 1 : 
+                                    isStatic;
+
+                        temp_answer = getMethodValue(
+                                        temp_node, context, isNode, isStatic ? IS_STATIC_METHOD : IS_INSTANCE_METHOD,
+                                        isStatic ? (void*)classContext : (void*)objectContext, temp
+                                    );
+                        
+                        if(temp_answer == NULL || temp_answer->valType == TT_ERROR)
+                            return temp_answer;
+                        else if(temp_answer->valType == TT_OBJECT){
+                            objectContext = (ObjectContext*)(temp_answer->num);
+                            classContext = objectContext->static_context;
+                        }
+                        else{
+                            return construct_Value(
+                                make_error(
+                                    SyntaxError("variable of type 'Object'", temp->val->line_no, temp->val->col_no),
+                                    temp->val->line_no, temp->val->col_no
+                                )
+                            );
+                        }
+                        break;
+                    }
+                }
+                temp = (Node*)(fp->right);
+            }
+
+            if(temp == NULL)
+                return NULL;
+            else{
+                if(temp->nodeType == VAR_NODE){
+                    name = (char*)(temp->val->val);
+                    if(isStatic){
+                        modify_static_var_in_ClassContext(classContext, name, val);
+                    }
+                    else{
+                        modify_instance_var_from_ObjectContext(objectContext, name, val);
+                    }
+                }
+                else{
+                    return construct_Value(
+                        make_error(
+                            SyntaxError("varName", temp->val->line_no, temp->val->col_no),
+                            temp->val->line_no, temp->val->col_no
+                        )
+                    );
+                }
+            }
+            break;
+        }
+        default:{
+            modify_context(context, key, val->num, val->valType);
         }
     }
-    else{
-        modify_context(context, key, val->num, val->valType);
-    }
-	
 	if(node->isVarNode != 0){
 		return val;
     }
@@ -685,7 +1452,7 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode){
 	return construct_Value(token);
 }
 
-Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode){
+Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode, int flag_type, void* context_needed){
     Value **values, **temp_values;
     int no_of_values = 1, total_no_of_values = 0;
     int size = DEFAULT_NO_OF_VALUES;
@@ -697,11 +1464,11 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
         no_of_values = 1;
         switch(nodes[i]->nodeType){
             case CONDITIONAL_NODE:{
-                temp_values = getConditionalNodeValue(nodes[i], &no_of_values, context, isNode);
+                temp_values = getConditionalNodeValue(nodes[i], &no_of_values, context, isNode, flag_type, context_needed);
                 break;
             }
             case LOOP_NODE:{
-                temp_values = getLoopNodeValue(nodes[i], &no_of_values, context, isNode);
+                temp_values = getLoopNodeValue(nodes[i], &no_of_values, context, isNode, flag_type, context_needed);
                 break;
             }
             case BREAK_NODE:{
@@ -753,7 +1520,7 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
                 else{
                     no_of_values = 1;
                     isNode[1] *= -1;
-                    *temp_values = viewNode((Node*)(nodes[i]->right), context, isNode);
+                    *temp_values = viewNode((Node*)(nodes[i]->right), context, isNode, flag_type, context_needed);
                 }
                 break;
             }
@@ -762,7 +1529,7 @@ Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isN
                 // temp_values = (Value**)malloc(sizeof(Value*));
                 temp_values = (Value**)allocate_ptr_for_size(sizeof(Value*));
                 // printf("Hamon\n");
-                *temp_values = viewNode(nodes[i], context, isNode);
+                *temp_values = viewNode(nodes[i], context, isNode, flag_type, context_needed);
             }
         }
 

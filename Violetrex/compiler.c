@@ -26,7 +26,7 @@ int main(int argc, char** argv)
         if(current_file_size == filesize)
             expand_file_data(&line, &filesize);
     }
-
+    
 	Context* context = construct_Context();
 	int t_size, curr_size = 0, curr_index;
 	Token** tokens;
@@ -72,10 +72,11 @@ int main(int argc, char** argv)
     }
     // val = viewNode(node, context);
     // printValue(val);
+    // printf("No of nodes: %d\n", no_of_nodes);
     // return 0;
-    int isNode[] = {0, 0, 0};
+    int isNode[] = {0, 0, 0, 0};
     //Index 0 is for loop node and index 1 is for function node
-    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode);
+    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode, -1, NULL);
     // printf("Success\n");
     Value** values = interpreter->values;
     int no_of_values = interpreter->no_of_values;

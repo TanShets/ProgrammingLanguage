@@ -106,6 +106,28 @@ void** search_from_context(Context* context, char* key){
     return answer;
 }
 
+void** search_from_local_context(Context* context, char* key){
+    int length = strlen(key);
+    // void** answer = (void**)calloc(2, sizeof(void*));
+    void** answer = (void**)allocate_ptr_array(2, sizeof(void*));
+    // int* type = (int*)malloc(sizeof(int));
+    int* type = (int*)allocate_ptr_for_size(sizeof(int));
+    
+    int index = search_index_from_context(context, key);
+    if(context->type[index] == -1)
+    {
+        *type = TT_ERROR;
+        answer[0] = NULL;
+        answer[1] = type;
+    }
+    else{
+        answer[0] = context->values[index];
+        *type = context->type[index];
+        answer[1] = type;
+    }
+    return answer;
+}
+
 void modify_context(Context* context, char* key, void* value, int type){
     int index = search_index_from_context(context, key);
     Context* temp = context;

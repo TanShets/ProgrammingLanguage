@@ -66,23 +66,32 @@
 #define TT_ARRAY_KEY_VAL_SEPARATOR 42
 #define TT_ARRAY 43
 
+#define TT_CLASS 44
+#define TT_OBJECT 45
+#define TT_DOT 46
+#define TT_THIS 47
+#define TT_STATIC 48
+#define TT_INHERITS 49
+
 char* keywords_for_Violetrex_syntax[] = {
 								"False", "None", "Null", "True", "and",
-								"break", "change", "elif", "else",
+								"break", "change", "class", "elif", "else",
 								"elseif", "false", "fn", "for",
-								"function", "if", "not", "null",
-								"or", "return", "to", "true", "while"
+								"function", "if", "inherits", "not", "null",
+								"or", "return", "static", "this", "to", 
+								"true", "while"
 							};
 int keyword_token_for_Violetrex_syntax[] = {
 								TT_FALSE, TT_NULL, TT_NULL, TT_TRUE, TT_AND,
-								TT_BREAK, TT_CHANGE, TT_ELSEIF, TT_ELSE,
+								TT_BREAK, TT_CHANGE, TT_CLASS, TT_ELSEIF, TT_ELSE,
 								TT_ELSEIF, TT_FALSE, TT_FUNCTION, TT_FOR,
-								TT_FUNCTION, TT_IF, TT_NOT, TT_NULL,
-								TT_OR, TT_RETURN, TT_TO, TT_TRUE, TT_WHILE
+								TT_FUNCTION, TT_IF, TT_INHERITS, TT_NOT, TT_NULL,
+								TT_OR, TT_RETURN, TT_STATIC, TT_THIS, TT_TO, 
+								TT_TRUE, TT_WHILE
 							};
 #define KEYWORDS keywords_for_Violetrex_syntax
 #define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
-#define KEYWORDS_SIZE 22
+#define KEYWORDS_SIZE 26
 
 #define INPUT_FN -100
 #define PRINT_FN -101
@@ -153,8 +162,8 @@ Hashed values are here
 #define IS_ALPHANUMERIC(c) (IS_ALPHABET(c) || (c >= '0' && c <= '9'))
 #define IS_ALLOWED_IN_VAR_NAME(c) (IS_ALPHANUMERIC(c) || c == '_')
 
-#define T_OPERATOR_SIZE 11
-char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!^:";
+#define T_OPERATOR_SIZE 12
+char T_OPERATOR_KEYS[T_OPERATOR_SIZE] = "+-*/=<>!^:.";
 
 #define T_OPERATOR_REVERSE_SIZE 21
 int T_OPERATOR_REVERSE_KEYS[] = {
@@ -253,6 +262,9 @@ int T_OPERATOR(char* c, int length)
 		case ':':
 			val = TT_ARRAY_KEY_VAL_SEPARATOR;
 			break;
+		case '.':
+			val = TT_DOT;
+			break;
 		default:
 			return TT_EOF;
 	}
@@ -260,7 +272,7 @@ int T_OPERATOR(char* c, int length)
 	if(length > 1)
 	{
 		// printf("c[1] %d %d\n", c[1] == '=', strchr(":^", c[0]) != NULL);
-		return c[1] == '=' && strchr(":^", c[0]) == NULL ? 
+		return c[1] == '=' && strchr(":^.", c[0]) == NULL ? 
 				val + added_val : TT_EOF;
 	}
 
@@ -335,6 +347,8 @@ char* T_OPERATOR_REVERSE(int n){
 		case TT_GREATER_THAN_EQ:
 			op[0] = '>', op[1] = '=', op[2] = '\0';
 			break;
+		default:
+			op[0] = '\0';
 	}
 	return op;
 }
