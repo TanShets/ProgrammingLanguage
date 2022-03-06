@@ -50,6 +50,7 @@ typedef struct NODE{
 	int* block_lengths;
 	Token* val;
 	int leftType, rightType, valType, isVarNode, else_block_Type;
+	char* prefix;
 }Node;
 
 Node* construct_Node(Token* val, int nodeType){
@@ -62,6 +63,7 @@ Node* construct_Node(Token* val, int nodeType){
 	node->block_lengths = NULL, node->leftType = TT_ERROR;
 	node->rightType = TT_ERROR, node->isVarNode = 0;
 	node->else_block_Type = TT_ERROR;
+	node->prefix = NULL;
 	return node;
 }
 
@@ -322,7 +324,6 @@ void expand_block(Node*** block, int* block_size){
 	*block_size *= 2;
 	// *block = (Node**)realloc(*block, *block_size * sizeof(Node*));
 	*block = (Node**)reallocate_heap_alloced_ptr(*block, *block_size * sizeof(Node*));
-
 	// Node** old_block = *block;
 	// Node** new_block = (Node**)calloc(*block_size, sizeof(Node*));
 	// memcpy(new_block, *block, old_block_size * sizeof(Node*));

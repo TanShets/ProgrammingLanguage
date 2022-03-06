@@ -4,7 +4,7 @@
 #define HEAP_ALLOCED_DEFAULT_SIZE 32
 
 void** HEAP_ALLOCED_HASHMAP_KEY_ARRAY = NULL;
-void** HEAP_ALLOCED_HASHMAP_VALUE_ARRAY = NULL;
+heap_block** HEAP_ALLOCED_HASHMAP_VALUE_ARRAY = NULL;
 char* HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY = NULL;
 //Basically we're allowing 32 pointers to be stored in the Hashmap by default which is open to expansion
 HEAP_ALLOCED_HASHMAP_INDEX_TYPE HEAP_ALLOCED_HASHMAP_CAPACITY = HEAP_ALLOCED_DEFAULT_SIZE;
@@ -12,7 +12,7 @@ HEAP_ALLOCED_HASHMAP_INDEX_TYPE HEAP_ALLOCED_HASHMAP_FILLED_COUNT = 0;
 
 void initialize_heap_alloc_hashmap(){
     HEAP_ALLOCED_HASHMAP_KEY_ARRAY = (void**)mem_alloc(HEAP_ALLOCED_HASHMAP_CAPACITY * sizeof(void*));
-    HEAP_ALLOCED_HASHMAP_VALUE_ARRAY = (void**)mem_alloc(HEAP_ALLOCED_HASHMAP_CAPACITY * sizeof(void*));
+    HEAP_ALLOCED_HASHMAP_VALUE_ARRAY = (heap_block**)mem_alloc(HEAP_ALLOCED_HASHMAP_CAPACITY * sizeof(heap_block*));
     HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY = (char*)mem_alloc(HEAP_ALLOCED_HASHMAP_CAPACITY * sizeof(char));
     for(int i = 0; i < HEAP_ALLOCED_HASHMAP_CAPACITY; i++){
         HEAP_ALLOCED_HASHMAP_KEY_ARRAY[i] = NULL;
@@ -23,12 +23,12 @@ void initialize_heap_alloc_hashmap(){
 
 void expand_heap_alloced_hashmap(){
     void** old_key_arr = HEAP_ALLOCED_HASHMAP_KEY_ARRAY;
-    void** old_val_arr = HEAP_ALLOCED_HASHMAP_VALUE_ARRAY;
+    heap_block** old_val_arr = HEAP_ALLOCED_HASHMAP_VALUE_ARRAY;
     char* old_val_type_arr = HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY;
     HEAP_ALLOCED_HASHMAP_INDEX_TYPE old_size = HEAP_ALLOCED_HASHMAP_CAPACITY, new_size = 2 * HEAP_ALLOCED_HASHMAP_CAPACITY;
 
     void** new_key_arr = mem_alloc(new_size * sizeof(void*));
-    void** new_val_arr = mem_alloc(new_size * sizeof(void*));
+    heap_block** new_val_arr = mem_alloc(new_size * sizeof(heap_block*));
     char* new_val_type_arr = mem_alloc(new_size * sizeof(char));
     if(new_key_arr == NULL || new_val_arr == NULL){
         printf("Heap Overflow: Could not find additional space\n");
@@ -50,11 +50,11 @@ void expand_heap_alloced_hashmap(){
             insert_into_heap_alloced_hashmap(old_key_arr[i], old_val_arr[i], old_val_type_arr[i] == 'h');
     
     mem_free_heap_allocated_pointer(old_key_arr, old_size * sizeof(void*));
-    mem_free_heap_allocated_pointer(old_val_arr, old_size * sizeof(void*));
+    mem_free_heap_allocated_pointer(old_val_arr, old_size * sizeof(heap_block*));
     mem_free_heap_allocated_pointer(old_val_type_arr, old_size * sizeof(char));
 }
 
-void insert_into_heap_alloced_hashmap(void* key, void* value, int isHead){
+void insert_into_heap_alloced_hashmap(void* key, heap_block* value, int isHead){
     HEAP_ALLOCED_HASHMAP_INDEX_TYPE* index_ptr = (HEAP_ALLOCED_HASHMAP_INDEX_TYPE*)key;
     HEAP_ALLOCED_HASHMAP_INDEX_TYPE num = (HEAP_ALLOCED_HASHMAP_INDEX_TYPE)index_ptr;
     HEAP_ALLOCED_HASHMAP_INDEX_TYPE index, i = -1;
@@ -63,7 +63,7 @@ void insert_into_heap_alloced_hashmap(void* key, void* value, int isHead){
         i++;
         index = HEAP_ALLOC_HASHING_FN(num, HEAP_ALLOCED_HASHMAP_CAPACITY, i);
         isLooking = HEAP_ALLOCED_HASHMAP_KEY_ARRAY[index] != NULL && 
-                    HEAP_ALLOCED_HASHMAP_KEY_ARRAY[index] != (void*)HEAP_ALLOCED_HASHMAP_KEY_ARRAY;
+                    (char*)HEAP_ALLOCED_HASHMAP_KEY_ARRAY[index] != (char*)HEAP_ALLOCED_HASHMAP_KEY_ARRAY;
     }
 
     HEAP_ALLOCED_HASHMAP_KEY_ARRAY[index] = key;
@@ -111,7 +111,7 @@ void delete_key_from_heap_alloced_hashmap(void* key){
     HEAP_ALLOCED_HASHMAP_VALUE_TYPE_ARRAY[index] = 'm';
 }
 
-void modify_heap_alloced_hashmap_with_key(void* key, void* new_value, int isHead){
+void modify_heap_alloced_hashmap_with_key(void* key, heap_block* new_value, int isHead){
     HEAP_ALLOCED_HASHMAP_INDEX_TYPE index = find_index_from_key_from_heap_alloced_hashmap(key);
     if(index == -1)
         insert_into_heap_alloced_hashmap(key, new_value, isHead);

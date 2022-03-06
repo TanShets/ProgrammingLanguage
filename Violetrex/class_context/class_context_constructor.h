@@ -1,3 +1,4 @@
+#pragma once
 #include "class_context_create.h"
 
 void expand_constructor_of_ClassContext(ClassContext* classContext, int new_key){
@@ -19,7 +20,7 @@ int insert_constructor_into_ClassContext(ClassContext* classContext, int key, No
         printf("HashError: Cannot override constructor in the same class definition\n");
         return 0;
     }
-
+    
     classContext->constructor[key] = value;
     return 1;
 }

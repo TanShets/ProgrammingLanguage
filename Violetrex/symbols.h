@@ -480,3 +480,48 @@ char* value_to_string_eq(void* num, int type){
 			return NULL;
 	}
 }
+
+char* merge_strings(char* a, char* b){
+	int len1 = strlen(a), len2 = strlen(b);
+	char* x = (char*)allocate_ptr_array(len1 + len2 + 5, sizeof(char));
+	strcpy(x, a);
+	strcat(x, b);
+	return x;
+}
+
+char** split(char* word, char c, int* length_ptr){
+	int count = 1;
+	char** words = NULL;
+	int i, j, start = 0;
+	for(i = 0; i < strlen(word); i++)
+		if(word[i] == c)
+			count++;
+	if(count == 1){
+		words = allocate_ptr_for_size(sizeof(char*));
+		*length_ptr = count;
+		*words = word;
+		return words;
+	}
+	words = allocate_ptr_array(count, sizeof(char*));
+	char* temp_char = NULL;
+	j = 0;
+	for(i = 0; i < strlen(word); i++){
+		if(word[i] == c){
+			temp_char = allocate_ptr_array(i - start + 1, sizeof(char));
+			strncpy(temp_char, word + start, i - start);
+			temp_char[i - start] = '\0';
+			words[j] = temp_char;
+			j++;
+			start = i + 1;
+		}
+	}
+	
+	if(start < strlen(word)){
+		temp_char = allocate_ptr_array(strlen(word) - start + 1, sizeof(char));
+		strncpy(temp_char, word + start, strlen(word) - start);
+		temp_char[strlen(word) - start] = '\0';
+		words[j] = temp_char;
+	}
+	*length_ptr = count;
+	return words;
+}

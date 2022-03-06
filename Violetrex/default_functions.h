@@ -4,7 +4,7 @@
 #include "value.h"
 
 // Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode);
-Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode, int flag_type, void* context_needed);
+Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 
 Value* print_function(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
     int no_of_parameters = node->leftType;
@@ -12,7 +12,7 @@ Value* print_function(Node* node, Context* context, int* isNode, int flag_type, 
     int i;
     Value* temp;
     for(i = 0; i < no_of_parameters; i++){
-        temp = viewNode(param_vals[i], context, isNode, flag_type, context_needed);
+        temp = viewNode(param_vals[i], context, isNode, flag_type, context_needed, NULL);
         if(temp->valType == TT_ERROR){
             return temp;
         }
@@ -48,7 +48,7 @@ Value* input_function(Node* node, Context* context, int* isNode, int flag_type, 
         return temp;
     }
     else if(no_of_parameters == 1){
-        temp = viewNode(*param_vals, context, isNode, flag_type, context_needed);
+        temp = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
         if(temp->valType == TT_ERROR)
             return temp;
         // printValue(temp);
@@ -95,7 +95,7 @@ Value* convert_to_string(Node* node, Context* context, int* isNode, int flag_typ
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(
@@ -219,7 +219,7 @@ Value* convert_to_float(Node* node, Context* context, int* isNode, int flag_type
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(
@@ -319,7 +319,7 @@ Value* convert_to_int(Node* node, Context* context, int* isNode, int flag_type, 
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(

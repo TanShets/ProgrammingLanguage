@@ -44,12 +44,13 @@ typedef struct {
 } HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE;
 
 void initialize_heap_alloc_hashmap();
-void insert_into_heap_alloced_hashmap(void* key, void* value, int isHead);
-void modify_heap_alloced_hashmap_with_key(void* key, void* new_value, int isHead);
+void insert_into_heap_alloced_hashmap(void* key, heap_block* value, int isHead);
+void modify_heap_alloced_hashmap_with_key(void* key, heap_block* new_value, int isHead);
 void delete_key_from_heap_alloced_hashmap(void* key);
 HEAP_ALLOCED_HASHMAP_VALUE_RETURN_TYPE find_from_heap_alloced_hashmap(void* key);
 int detect_loop_in_heap_list(heap_block* head);
 void view_heap_pointer_status();
+void view_heap_alloced_hashmap_status();
 void add_to_free_list_by_pointer(void* ptr, size_t size);
 
 void* mem_alloc(size_t size){
@@ -125,7 +126,9 @@ void expand_heap_allocated_heap_list(int flag){
     void* ptr;
     heap_block *head, *temp, *fp;
     heap_block *new_head, *new_temp;
-    heap_block* heads[3] = {heap_free_pointer_list, heap_alloced_pointer_list, garbage_heap_alloced_pointer_list};
+    heap_block *head1 = flag ? (heap_block*)heap_free_pointer_list : (heap_block*)heap_alloced_pointer_list;
+    heap_block *head2 = flag ? (heap_block*)heap_alloced_pointer_list : (heap_block*)heap_free_pointer_list;
+    heap_block* heads[3] = {head1, head2, garbage_heap_alloced_pointer_list};
     head = flag ? (heap_block*)heap_free_pointer_list : (heap_block*)heap_alloced_pointer_list;
     size = flag ? HEAP_FREE_POINTER_LIST_SIZE : HEAP_ALLOCED_POINTER_LIST_SIZE;
     occupied_size = size - (flag ? LIST_FREE_BLOCK_SIZE_REMAINING : LIST_ALLOCED_BLOCK_SIZE_REMAINING);
@@ -153,7 +156,7 @@ void expand_heap_allocated_heap_list(int flag){
                 new_temp->size = temp->size;
                 if(fp != NULL)
                     fp->next = new_temp;
-                if(!flag && i == 1){
+                if(!flag && i == 0){
                     modify_heap_alloced_hashmap_with_key(
                         new_temp->addr, new_temp == new_head ? new_head : fp, new_temp == new_head
                     );
@@ -161,6 +164,9 @@ void expand_heap_allocated_heap_list(int flag){
                 new_temp->next = temp->next;
                 if(temp == garbage_heap_alloced_pointer_list)
                     garbage_heap_alloced_pointer_list = new_temp;
+                temp->addr = NULL;
+                temp->size = 0;
+                temp->next = NULL;
                 temp = new_temp;
             }
             fp = temp;
@@ -186,6 +192,7 @@ void expand_heap_allocated_heap_list(int flag){
 }
 
 void add_to_alloced_list_by_node(heap_block* node){
+    node->next = NULL;
     heap_block* head = (heap_block*)heap_alloced_pointer_list;
     if(head->addr == NULL){
         head->addr = node->addr;
@@ -196,14 +203,11 @@ void add_to_alloced_list_by_node(heap_block* node){
     }
     heap_block *temp = head, *fp = NULL;
     int result = 0, list_counter = 1;
+    if(detect_loop_in_heap_list(head)){
+        printf("HeapError: Circular list detected while inserting node into alloced\n");
+        exit(0);
+    }
     while(temp != NULL && HEAP_PTR_GREATER(node->addr, temp->addr)){ //(char*)(node->addr) > (char*)(temp->addr)){
-        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
-            if(detect_loop_in_heap_list(head)){
-                printf("HeapError: Circular list detected while inserting node into alloced\n");
-                exit(0);
-            }
-        }
-        list_counter++;
         fp = temp;
         temp = temp->next;
     }
@@ -232,7 +236,7 @@ void add_to_alloced_list_by_node(heap_block* node){
 }
 
 void add_to_alloced_list_by_pointer(void* ptr, size_t size){
-    if(garbage_heap_alloced_pointer_list == NULL && LIST_ALLOCED_BLOCK_SIZE_REMAINING < sizeof(heap_block))
+    if(garbage_heap_alloced_pointer_list == NULL && LIST_ALLOCED_BLOCK_SIZE_REMAINING <= sizeof(heap_block))
         expand_heap_allocated_heap_list(0);
     heap_block* new_ptr = (heap_block*)((char*)heap_alloced_pointer_list + HEAP_ALLOCED_POINTER_LIST_SIZE - LIST_ALLOCED_BLOCK_SIZE_REMAINING);
     int isNull = garbage_heap_alloced_pointer_list == NULL;
@@ -249,6 +253,11 @@ void* allocate_ptr_for_size(size_t size){
     heap_block* head = (heap_block*)heap_free_pointer_list;
     heap_block *temp = head, *fp = NULL, *xp = NULL, *yp = NULL;
     int list_counter = 1;
+    if(detect_loop_in_heap_list(head)){
+        printf("HeapError: Detected Circular Linked list while "
+                "looking for free pointer of proper size\n");
+        exit(0);
+    }
     while(temp != NULL){
         if(temp->size >= size){
             if(xp == NULL || xp->size > temp->size){
@@ -256,15 +265,6 @@ void* allocate_ptr_for_size(size_t size){
                 xp = temp;
             }
         }
-
-        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
-            if(detect_loop_in_heap_list(head)){
-                printf("HeapError: Detected Circular Linked list while "
-                        "looking for free pointer of proper size\n");
-                exit(0);
-            }
-        }
-        list_counter++;
         fp = temp;
         temp = temp->next;
     }
@@ -311,7 +311,7 @@ void* allocate_ptr_for_size(size_t size){
         }
 
         size_t new_block_size = HEAP_ALLOC_BLOCK;
-        while(size >= new_block_size)
+        while(ALLOC_SIZE_ADJUST(size) >= new_block_size)
             new_block_size *= 2;
         
         void* new_block_addr = mem_alloc(new_block_size);
@@ -346,16 +346,13 @@ void* allocate_ptr_array(int count, size_t element_size){
 void add_to_free_list_by_node(heap_block* node){
     heap_block* head = (heap_block*)heap_free_pointer_list;
     heap_block *temp = head, *fp = NULL;
-    int list_counter = 1;
+    if(detect_loop_in_heap_list(head)){
+        printf("HeapError: Cicular linked list detected "
+                "while adding to Free list by node\n");
+        exit(0);
+    }
+
     while(temp != NULL && HEAP_PTR_GREATER(node->addr, temp->addr)){ //(char*)(temp->addr) < (char*)(node->addr)){
-        if(list_counter % HEAP_LIST_TRAVERSAL_COUNTER == 0){
-            if(detect_loop_in_heap_list(head)){
-                printf("HeapError: Cicular linked list detected "
-                        "while adding to Free list by node\n");
-                exit(0);
-            }
-        }
-        list_counter++;
         fp = temp;
         temp = temp->next;
     }
@@ -527,8 +524,16 @@ void* reallocate_heap_alloced_ptr(void* ptr, size_t new_size){
         printf("HeapError: Given pointer cannot be reallocated\n");
         exit(0);
     }
+    
     void* new_ptr = allocate_ptr_for_size(new_size);
+    
+    if(new_ptr == NULL){
+        printf("HeapError: Failed to find space for size %d\n", new_size);
+        exit(0);
+    }
     heap_block* node = (heap_block*)result.ptr;
+    // view_heap_alloced_hashmap_status();
+    // view_heap_pointer_status();
     node = result.type == 'h' ? node : node->next;
     size_t size = node->size;
     // printf("Mem: %p %p\n", ptr, node);

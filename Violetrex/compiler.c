@@ -26,7 +26,6 @@ int main(int argc, char** argv)
         if(current_file_size == filesize)
             expand_file_data(&line, &filesize);
     }
-    
 	Context* context = construct_Context();
 	int t_size, curr_size = 0, curr_index;
 	Token** tokens;
@@ -37,7 +36,6 @@ int main(int argc, char** argv)
     //printf("%d\n", strlen(line));
     //printf("%d\n", strlen(line));
     curr_size = 0;
-    
     tokens = Lexer(line, &curr_size, &t_size, &line_no, &col_no);
     // print_token_array(tokens, curr_size);
     if((*tokens)->type == TT_ERROR)
@@ -76,7 +74,7 @@ int main(int argc, char** argv)
     // return 0;
     int isNode[] = {0, 0, 0, 0};
     //Index 0 is for loop node and index 1 is for function node
-    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode, -1, NULL);
+    Interpreter* interpreter = Interpret(nodes, no_of_nodes, context, isNode, -1, NULL, NULL);
     // printf("Success\n");
     Value** values = interpreter->values;
     int no_of_values = interpreter->no_of_values;

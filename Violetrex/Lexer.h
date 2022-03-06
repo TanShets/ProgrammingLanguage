@@ -369,7 +369,6 @@ Token** Lexer(char* line, int* curr_size, int* t_size, int* line_no, int* col_no
 	while(i != TT_EOF && i < length)
 	{
 		c = line[i];
-
 		if(c >= '0' && c <= '9'){
 			tokens[*curr_size] = make_number(line, &i, line_no, col_no);
 			(*curr_size)++;

@@ -2,3 +2,5 @@
 *.out
 *.exe
 *.sh
+*.txt
+trial2.c

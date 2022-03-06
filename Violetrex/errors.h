@@ -20,6 +20,8 @@
 #define INVALID_STATIC_FUNCTION_NAME_ERROR 12
 #define CLASS_SYNTAX_ERROR 13
 #define METHOD_NOT_FOUND_ERROR 14
+#define STATIC_VAR_NOT_FOUND_ERROR 15
+#define INSTANCE_VAR_NOT_FOUND_ERROR 16
 
 typedef struct ERROR{
     int errType;
@@ -88,6 +90,18 @@ void printError(Error* error){
         }
         case INVALID_FUNCTION_NAME_ERROR:{
             printf("\nInvalidFunctionNameError: ");
+            break;
+        }
+        case INVALID_STATIC_FUNCTION_NAME_ERROR:{
+            printf("\nInvalidStaticFunctionNameError: ");
+            break;
+        }
+        case CLASS_SYNTAX_ERROR:{
+            printf("\nClassSyntaxError: ");
+            break;
+        }
+        case METHOD_NOT_FOUND_ERROR:{
+            printf("\nMethodNotFoundError: ");
             break;
         }
         default:{
@@ -255,4 +269,22 @@ Error* MethodNotFoundError(char* varname, char* no_of_params, int line_no, int c
     strcat(statement, no_of_params);
     strcat(statement, " parameters not defined");
     return construct_Error(METHOD_NOT_FOUND_ERROR, statement, line_no, col_no);
+}
+
+Error* StaticVarNotFoundError(char* varname, char* className, int line_no, int col_no){
+    char statement[200] = {"Variable '"};
+    strncpy(statement + strlen(statement), varname, strlen(varname));
+    strcat(statement, "' in class '");
+    strcat(statement, className);
+    strcat(statement, "' not initialized");
+    return construct_Error(STATIC_VAR_NOT_FOUND_ERROR, statement, line_no, col_no);
+}
+
+Error* InstanceVarNotFoundError(char* varname, char* className, int line_no, int col_no){
+    char statement[200] = {"Variable '"};
+    strncpy(statement + strlen(statement), varname, strlen(varname));
+    strcat(statement, "' in object of class '");
+    strcat(statement, className);
+    strcat(statement, "' not initialized");
+    return construct_Error(INSTANCE_VAR_NOT_FOUND_ERROR, statement, line_no, col_no);
 }

@@ -72,7 +72,7 @@ Value* copy_Value(Value* value){
 	return new_value;
 }
 
-Value* viewNode(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
+Value* viewNode(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 Value* construct_Value(Token* token);
 
 void alterValues(Value* answer, Value* changer, int op_type){
@@ -380,22 +380,22 @@ Value* getNullValue(Node* node){
 	return node->nodeType != NULL_NODE ? NULL : construct_Value(node->val);
 }
 
-Value* getBinOpValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* getBinOpValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
 	if(node->nodeType != BIN_OP_NODE)
 		return NULL;
 	else{
-		Value* leftValue = viewNode((Node*)node->left, context, isNode, flag_type, context_needed);
-		Value* rightValue = viewNode((Node*)node->right, context, isNode, flag_type, context_needed);
+		Value* leftValue = viewNode((Node*)node->left, context, isNode, flag_type, context_needed, prefix);
+		Value* rightValue = viewNode((Node*)node->right, context, isNode, flag_type, context_needed, prefix);
 		return operateValues(leftValue, rightValue, node->valType, 0);
 	}
 }
 
-Value* getUnOpValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* getUnOpValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
 	if(node->nodeType != UN_OP_NODE)
 		return NULL;
 	else{
 		if(node->valType == TT_SUB){
-			Value* val = viewNode((Node*)node->right, context, isNode, flag_type, context_needed);
+			Value* val = viewNode((Node*)node->right, context, isNode, flag_type, context_needed, prefix);
 			switch(val->valType){
 				case TT_INT:{
 					*((int*)(val->num)) *= -1;
@@ -409,7 +409,7 @@ Value* getUnOpValue(Node* node, Context* context, int* isNode, int flag_type, vo
 			return val;
 		}
 		else if(node->valType == TT_NOT){
-			Value* val = viewNode((Node*)node->right, context, isNode, flag_type, context_needed);
+			Value* val = viewNode((Node*)node->right, context, isNode, flag_type, context_needed, prefix);
 			int value = 0;
 			char *True = "true", *False = "false";
 			switch(val->valType){
@@ -446,7 +446,7 @@ Value* getUnOpValue(Node* node, Context* context, int* isNode, int flag_type, vo
 	}
 }
 
-Value* getVarAssignValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
+Value* getVarAssignValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 
 Value* getBreakValue(Node* node){
 	return node->nodeType == BREAK_NODE ? construct_Value(node->val) : NULL;
@@ -527,3 +527,6 @@ Value* getFunctionDefinitionValue(Node* node, Context* context){
 // 	}
 // 	return answer;
 // }
+
+Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
+Value* getMethodValue(Node* node, Context* context, int* isNode, int method_flag, void* needed_context, Node* fn_call, char* prefix, char* new_prefix);
