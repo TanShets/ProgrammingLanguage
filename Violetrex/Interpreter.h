@@ -1317,7 +1317,7 @@ Value* getConstructorValue(Node* node, Context* context, int* isNode, Node* cons
 }
 
 Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
-    Value* tempo_vals = default_function_control(node, context, isNode, flag_type, context_needed);
+    Value* tempo_vals = default_function_control(node, context, isNode, flag_type, context_needed, prefix);
     Token* token = NULL;
     ObjectContext* objectContext = NULL;
     ClassContext* classContext = NULL;
@@ -1384,10 +1384,39 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_
                         construct_ObjectContext(classContext, context, prefix);
         if(node->leftType != 0 || constructor->nodeType != NULL_NODE){
             isNode[3]++;
+            int outcome = 0;
             if(
-                strcmp(key, objectContext->static_context->className) != 0 && 
-                find_index_in_superclass_from_ClassContext(objectContext->static_context, key) == -1
+                strcmp(key, objectContext->static_context->className) == 0 || 
+                find_index_in_superclass_from_ClassContext(objectContext->static_context, key) != -1
             ){
+                outcome = 1;
+            }
+            else if(prefix != NULL){
+                int length = 0;
+                char** words = split(prefix, '.', &length);
+                if(length <= 1)
+                    return NULL;
+                
+                char* temp_name = words[length - 2];
+                results = search_from_context(context, temp_name);
+                if(*((int*)results[1]) != TT_CLASS){
+                    temp_name = merge_strings("Class '", temp_name);
+                    temp_name = merge_strings(temp_name, "' not found\n");
+                    return construct_Value(
+                        make_error(
+                            ClassSyntaxError(temp_name, constructor->val->line_no, constructor->val->col_no),
+                            constructor->val->line_no, constructor->val->col_no
+                        )
+                    );
+                }
+
+                ClassContext* temp_class = (ClassContext*)results[0];
+                if(find_index_in_superclass_from_ClassContext(temp_class, key) != -1)
+                    outcome = 1;
+            }
+            // strcmp(key, objectContext->static_context->className) != 0 && 
+            // find_index_in_superclass_from_ClassContext(objectContext->static_context, key) == -1
+            if(!outcome){
                 key = merge_strings("class ", key);
                 key = merge_strings(key, " not an immediate superclass of ");
                 key = merge_strings(key, objectContext->static_context->className);
@@ -1398,8 +1427,13 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_
                     )
                 );
             }
-            key = merge_strings(key, ".");
-            key = merge_strings(prefix == NULL ? "" : prefix, key);
+
+            if(strcmp(key, objectContext->static_context->className) != 0){
+                key = merge_strings(key, ".");
+                key = merge_strings(prefix == NULL ? "" : prefix, key);
+            }
+            else
+                key = prefix;
             tempo_vals = getMethodValue(constructor, context, isNode, IS_CONSTRUCTOR, objectContext, node, prefix, key);
             isNode[3]--;
             if(tempo_vals->valType == TT_ERROR)
@@ -1979,6 +2013,7 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode, int flag_typ
                                 );
                             }
                         }
+                        name = merge_strings(prefix == NULL ? "" : prefix, name);
                         modify_instance_var_from_ObjectContext(objectContext, name, val);
                     }
                 }

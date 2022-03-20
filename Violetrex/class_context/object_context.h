@@ -164,7 +164,7 @@ Value* find_instance_var_from_ObjectContext(ObjectContext* objectContext, char* 
         index = find_index_from_instance_var_in_ObjectContext(objectContext, temp_key);
         if(index == -1){
             temp_key = words[length - 1];
-            temp_prefix = prefix;
+            temp_prefix = prefix != NULL ? prefix : "";
             for(i = 0; i < length - 1; i++){
                 temp_prefix = merge_strings(temp_prefix, words[i]);
                 strcat(temp_prefix, ".");
@@ -194,6 +194,8 @@ void modify_instance_var_from_ObjectContext(ObjectContext* objectContext, char* 
             );
             exit(0);
         }
+
+        // printf("################# Key: %s #####################\n", key);
         objectContext->instance_var_keys[index] = key;
         objectContext->instance_var[index] = value;
     }
@@ -262,16 +264,16 @@ void insert_superclass_objects_into_ObjectContext(ObjectContext* objectContext, 
         temp_class = (ClassContext*)(results[0]);
         objectContext->superclass_objects[index] = construct_ObjectContext(temp_class, context, prefix);
         constructor = get_constructor_from_ClassContext(temp_class, 0);
-        if(constructor->nodeType != NULL_NODE){
-            isNode[3]++;
-            temp_node->val->val = temp_name;
-            tempo_vals = getMethodValue(constructor, context, isNode, 0, objectContext, temp_node, prefix, temp_prefix);
-            isNode[3]--;
-            if(tempo_vals->valType == TT_ERROR){
-                printValue(tempo_vals);
-                exit(0);
-            }
-        }
+        // if(constructor->nodeType != NULL_NODE){
+        //     isNode[3]++;
+        //     temp_node->val->val = temp_name;
+        //     tempo_vals = getMethodValue(constructor, context, isNode, 0, objectContext, temp_node, prefix, temp_prefix);
+        //     isNode[3]--;
+        //     if(tempo_vals->valType == TT_ERROR){
+        //         printValue(tempo_vals);
+        //         exit(0);
+        //     }
+        // }
         objectContext->no_of_superclasses++;
     }
 }

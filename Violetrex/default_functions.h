@@ -6,13 +6,13 @@
 // Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode);
 Interpreter* Interpret(Node** nodes, int no_of_nodes, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 
-Value* print_function(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* print_function(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     int i;
     Value* temp;
     for(i = 0; i < no_of_parameters; i++){
-        temp = viewNode(param_vals[i], context, isNode, flag_type, context_needed, NULL);
+        temp = viewNode(param_vals[i], context, isNode, flag_type, context_needed, prefix);
         if(temp->valType == TT_ERROR){
             return temp;
         }
@@ -29,7 +29,7 @@ Value* print_function(Node* node, Context* context, int* isNode, int flag_type, 
     return construct_Value(token);
 }
 
-Value* input_function(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* input_function(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     Value* temp;
@@ -48,7 +48,7 @@ Value* input_function(Node* node, Context* context, int* isNode, int flag_type, 
         return temp;
     }
     else if(no_of_parameters == 1){
-        temp = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
+        temp = viewNode(*param_vals, context, isNode, flag_type, context_needed, prefix);
         if(temp->valType == TT_ERROR)
             return temp;
         // printValue(temp);
@@ -78,7 +78,7 @@ Value* input_function(Node* node, Context* context, int* isNode, int flag_type, 
     return construct_Value(token);
 }
 
-Value* convert_to_string(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* convert_to_string(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     int line_no = ((Token*)(node->val))->line_no;
@@ -95,7 +95,7 @@ Value* convert_to_string(Node* node, Context* context, int* isNode, int flag_typ
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, prefix);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(
@@ -202,7 +202,7 @@ Value* convert_to_string(Node* node, Context* context, int* isNode, int flag_typ
     return construct_Value(token);
 }
 
-Value* convert_to_float(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* convert_to_float(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     int line_no = ((Token*)(node->val))->line_no;
@@ -219,7 +219,7 @@ Value* convert_to_float(Node* node, Context* context, int* isNode, int flag_type
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, prefix);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(
@@ -302,7 +302,7 @@ Value* convert_to_float(Node* node, Context* context, int* isNode, int flag_type
     return construct_Value(token);
 }
 
-Value* convert_to_int(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* convert_to_int(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     int no_of_parameters = node->leftType;
     Node** param_vals = (Node**)node->left;
     int line_no = ((Token*)(node->val))->line_no;
@@ -319,7 +319,7 @@ Value* convert_to_int(Node* node, Context* context, int* isNode, int flag_type, 
         );
         return temp;
     }
-    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, NULL);
+    Value* temp_val = viewNode(*param_vals, context, isNode, flag_type, context_needed, prefix);
     Value* answer = NULL;
     if(temp_val == NULL){
         temp_val = construct_Value(
@@ -400,21 +400,21 @@ Value* convert_to_int(Node* node, Context* context, int* isNode, int flag_type, 
     return construct_Value(token);
 }
 
-Value* default_function_control(Node* node, Context* context, int* isNode, int flag_type, void* context_needed){
+Value* default_function_control(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     char* key = (char*)(((Token*)node->val)->val);
     int function_num = GET_FUNCTION_CODE(key);
     Value* temp = NULL;
     switch(function_num){
         case INPUT_FN:
-            return input_function(node, context, isNode, flag_type, context_needed);
+            return input_function(node, context, isNode, flag_type, context_needed, prefix);
         case PRINT_FN:
-            return print_function(node, context, isNode, flag_type, context_needed);
+            return print_function(node, context, isNode, flag_type, context_needed, prefix);
         case STRING_FN:
-            return convert_to_string(node, context, isNode, flag_type, context_needed);
+            return convert_to_string(node, context, isNode, flag_type, context_needed, prefix);
         case FLOAT_FN:
-            return convert_to_float(node, context, isNode, flag_type, context_needed);
+            return convert_to_float(node, context, isNode, flag_type, context_needed, prefix);
         case INT_FN:
-            return convert_to_int(node, context, isNode, flag_type, context_needed);
+            return convert_to_int(node, context, isNode, flag_type, context_needed, prefix);
         default:
             return temp;
     }

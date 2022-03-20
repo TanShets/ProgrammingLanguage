@@ -1,8 +1,17 @@
-class B{
+class Z{
+    function constructor(){
+        this.w = 5
+        print("Entered constructor of Z")
+    }
+}
+
+class B inherits Z{
     x = 5
 
     function constructor(){
         this.c = 0
+        Z()
+        print(this.c)
         print("Entered constructor of B")
     }
 
@@ -25,6 +34,8 @@ class A inherits C, B{
     function constructor(c, d){
         print("Entered constructor of A")
         A(d)
+        B()
+        print("Exited B")
         this.c = c
         this.d = d
     }
@@ -76,3 +87,5 @@ print(a.e, b.e)
 a.add_to_a(5)
 print("Finished this thing", A.a, a.a, b.a)
 print(A.y)
+print(a.B.c)
+print("a.B.Z.w:", a.B.Z.w)
