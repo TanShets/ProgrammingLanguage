@@ -1,12 +1,19 @@
 #include <stdio.h>
 #include "symbols.h"
 #include "Lexer.h"
+// #include <stdlib.h>
 
 #define ASSERT_NOT_EOF(curr_index, size, tokens) ({\
 	if(IS_EOA(curr_index, size)){\
 		return tokens;\
 	}\
 })
+
+// _DCRTIMP int __cdecl system(_In_opt_z_ char const* _Command);
+#ifndef _CRT_SYSTEM_DEFINED
+#define _CRT_SYSTEM_DEFINED
+int __cdecl system(const char* _Command);
+#endif
 
 int add(int a, int b)
 {
@@ -23,6 +30,7 @@ int main(){
 	start_Dynamic_Mem();
 	char c = 'a';
 	int count = 0;
+	char* bb8 = "holla torus\n";
 	printf("%s", INT_TO_STR(0));
 	while((c = getchar()) != EOF)
 		if(c != '\n') printf("%c%d", c, count++);
@@ -52,6 +60,8 @@ int main(){
 void overflow(void){
 	printf("Made it to overflow\n");
 	printf("Sum is %d\n", add(5, 5));
+	system("run2.bat");
+	system("Violetrex tests/test4.vrx");
 	// exit(0);
 	// while(1);
 }

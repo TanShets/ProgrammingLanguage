@@ -1,8 +1,14 @@
 #include "value.h"
 #include "Interpreter.h"
 #include "mem_allocator/mem_lib.h"
+#include "vrx_to_exe.h"
 
 #define DEFAULT_NO_OF_NODES 5
+
+#ifndef _CRT_SYSTEM_DEFINED
+#define _CRT_SYSTEM_DEFINED
+int __cdecl system(const char* _Command);
+#endif
 
 int main(int argc, char** argv)
 {
@@ -25,6 +31,16 @@ int main(int argc, char** argv)
         current_file_size++;
         if(current_file_size == filesize)
             expand_file_data(&line, &filesize);
+    }
+    if(argc > 3){
+        if(strcmp(argv[2], "-compile") == 0 || strcmp(argv[2], "-c") == 0){
+            if(strcmp(argv[3], "Violetrex") == 0){
+                printf("\nCompilationError: Cannot assign exe name to be same as Language name\n");
+            }
+            else
+                get_exec_file(line, argv[3]);
+            return 0;
+        }
     }
 	Context* context = construct_Context();
 	int t_size, curr_size = 0, curr_index;

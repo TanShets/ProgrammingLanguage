@@ -3,6 +3,7 @@
     "files.associations": {
         "stdlib.h": "c",
         "memoryapi.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "symbols.h": "c"
     }
 }
