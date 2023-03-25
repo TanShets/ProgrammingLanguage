@@ -10,39 +10,26 @@
 int __cdecl system(const char* _Command);
 #endif
 
-int main(int argc, char** argv)
+Context* processFile(char* filename, char* line, int filesize)
 {
-    // char FILE_LINES[SIZE];
-    start_Dynamic_Mem();
-    int filesize = SIZE;
-    int current_file_size = 0;
-	int line_no = 1, col_no = 1;
-    char* filename = argv[1];
-    char* line = (char*)allocate_ptr_array(filesize, sizeof(char));
-    if(strcmp(&filename[strlen(filename) - 4], ".vrx") != 0)
+    if(strlen(filename) <= 4 || strcmp(&filename[strlen(filename) - 4], ".vrx") != 0)
     {
         printf("File format error: Not a .vrx file\n");
         return 0;
     }
     FILE* fp = fopen(filename, "r");
     char c;
+    int current_file_size = 0;
+    int line_no = 1, col_no = 1;
     while((c = fgetc(fp)) != EOF){
         line[current_file_size] = c;
         current_file_size++;
         if(current_file_size == filesize)
             expand_file_data(&line, &filesize);
     }
-    if(argc > 3){
-        if(strcmp(argv[2], "-compile") == 0 || strcmp(argv[2], "-c") == 0){
-            if(strcmp(argv[3], "Violetrex") == 0){
-                printf("\nCompilationError: Cannot assign exe name to be same as Language name\n");
-            }
-            else
-                get_exec_file(line, argv[3]);
-            return 0;
-        }
-    }
+
 	Context* context = construct_Context();
+    context->filePath = getAbsolutePath(filename);
 	int t_size, curr_size = 0, curr_index;
 	Token** tokens;
 	Node* node;
@@ -59,15 +46,7 @@ int main(int argc, char** argv)
         print_token(*tokens);
         return 0;
     }
-    // printf("Flag4 %d\n", t_size);
-    // if(tokens != NULL)
-    // print_token_array(tokens, curr_size);
-    // view_heap_pointer_status();
-    // view_heap_alloced_hashmap_status();
-    // return 0;
-    // else
-    // 	printf("\nIt was null lol\n");
-    //printf("\n\n\n\n");
+    
     curr_index = 0;
     no_of_nodes = 0, max_no_of_nodes = DEFAULT_NO_OF_NODES;
     // nodes = (Node**)calloc(max_no_of_nodes, sizeof(Node*));
@@ -99,5 +78,27 @@ int main(int argc, char** argv)
     // printValues(interpreter);
     line_no++;
     col_no = 1;
-	// return 0;
+    return context;
+}
+
+int main(int argc, char** argv)
+{
+    // char FILE_LINES[SIZE];
+    start_Dynamic_Mem();
+    int filesize = SIZE;
+    char* filename = argv[1];
+    //printf("\nAbspath is %s", getAbsolutePath(filename));
+    char* line = (char*)allocate_ptr_array(filesize, sizeof(char));
+    if(argc > 3){
+        if(strcmp(argv[2], "-compile") == 0 || strcmp(argv[2], "-c") == 0){
+            if(strcmp(argv[3], "Violetrex") == 0){
+                printf("\nCompilationError: Cannot assign exe name to be same as Language name\n");
+            }
+            else
+                get_exec_file(line, argv[3]);
+            return 0;
+        }
+    }
+    Context* context = processFile(filename, line, filesize);
+    return 0;
 }
