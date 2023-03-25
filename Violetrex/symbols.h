@@ -72,26 +72,29 @@
 #define TT_THIS 47
 #define TT_STATIC 48
 #define TT_INHERITS 49
+#define TT_IMPORT 50
+#define TT_FROM 51
+#define TT_CONTEXT 52
 
 char* keywords_for_Violetrex_syntax[] = {
 								"False", "None", "Null", "True", "and",
 								"break", "change", "class", "elif", "else",
-								"elseif", "false", "fn", "for",
-								"function", "if", "inherits", "not", "null",
+								"elseif", "false", "fn", "for", "from",
+								"function", "if", "import", "inherits", "not", "null",
 								"or", "return", "static", "this", "to", 
 								"true", "while"
 							};
 int keyword_token_for_Violetrex_syntax[] = {
 								TT_FALSE, TT_NULL, TT_NULL, TT_TRUE, TT_AND,
 								TT_BREAK, TT_CHANGE, TT_CLASS, TT_ELSEIF, TT_ELSE,
-								TT_ELSEIF, TT_FALSE, TT_FUNCTION, TT_FOR,
-								TT_FUNCTION, TT_IF, TT_INHERITS, TT_NOT, TT_NULL,
+								TT_ELSEIF, TT_FALSE, TT_FUNCTION, TT_FOR, TT_FROM,
+								TT_FUNCTION, TT_IF, TT_IMPORT, TT_INHERITS, TT_NOT, TT_NULL,
 								TT_OR, TT_RETURN, TT_STATIC, TT_THIS, TT_TO, 
 								TT_TRUE, TT_WHILE
 							};
 #define KEYWORDS keywords_for_Violetrex_syntax
 #define KEYWORDS_TOKEN keyword_token_for_Violetrex_syntax
-#define KEYWORDS_SIZE 26
+#define KEYWORDS_SIZE 28
 
 #define INPUT_FN -100
 #define PRINT_FN -101
@@ -195,6 +198,8 @@ int T_OPERATOR_REVERSE_KEYS[] = {
 )
 
 #define IN_CONDITIONAL_OPERATORS(x) (x == TT_AND || x == TT_OR)
+
+#define APPEND_TO_PATH(finalParentDir, path_piece) (merge_strings(merge_strings(finalParentDir, path_piece), PATH_CHAR))
 
 int T_OPERATOR_REVERSE_DETECTION(int num, int start, int length)
 {
@@ -524,4 +529,37 @@ char** split(char* word, char c, int* length_ptr){
 	}
 	*length_ptr = count;
 	return words;
+}
+
+char* generateParentDirectory(char* currFilePath, char* parentDir){
+	char* finalParentDir = *PATH_CHAR == '/' ? "/" : "";
+	int length = -1;
+	char** broken_path = split(currFilePath, *PATH_CHAR, &length);
+	int len_parent = -1;
+	char** broken_parent_path = parentDir == NULL ? NULL : strchr(parentDir, '/') != NULL ? split(parentDir, '/', &len_parent) : strchr(parentDir, '\\') != NULL ? split(parentDir, '\\', &len_parent) : NULL;
+	
+	int limit = length - 1, i, start = 0;
+	if(broken_parent_path != NULL){
+		for(i = 0; i < len_parent; i++){
+			if(broken_parent_path[i] == NULL){
+				len_parent--;
+				break;
+			}
+			else if(i == 0 && strcmp(broken_parent_path[i], ".") == 0){
+				start++;
+				continue;
+			}
+			else if(strcmp(broken_parent_path[i], "..") != 0)
+				break;
+			start++;
+			limit--;
+		}
+	}
+	for(i = 0; i < limit; i++)
+		finalParentDir = APPEND_TO_PATH(finalParentDir, broken_path[i]);
+	
+	if(broken_parent_path != NULL)
+		for(i = start; i < len_parent; i++)
+			finalParentDir = APPEND_TO_PATH(finalParentDir, broken_parent_path[i]);
+	return finalParentDir;
 }

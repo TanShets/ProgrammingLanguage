@@ -11,6 +11,7 @@ typedef struct CONTEXT{
     void** values;
     char** keys;
     int* type;
+    char* filePath;
 } Context;
 
 Context* construct_Context(){
@@ -25,6 +26,7 @@ Context* construct_Context(){
     context->values = (void**)allocate_ptr_array(context->context_size, sizeof(void*));
     context->keys = (char**)allocate_ptr_array(context->context_size, sizeof(char*));
     context->type = (int*)allocate_ptr_array(context->context_size, sizeof(int));
+    context->filePath = (char*)allocate_ptr_array(STD_ABS_PATH_SIZE, sizeof(char));
     // memset(context->type, -1, context->context_size * sizeof(int));
     set_heap_alloced_memory(context->type, -1, context->context_size * sizeof(int));
     return context;

@@ -1,14 +1,19 @@
 #pragma once
 #ifdef __linux
 #include <sys/mman.h>
+#include <stdlib.h>
+#define PATH_CHAR "/"
 #elif _WIN32
 #include <memoryapi.h>
+#include <fileapi.h>
+#define PATH_CHAR "\\"
 #endif
 
 #include <stdio.h>
 
 #define HEAP_ALLOC_BLOCK 50000
 #define LIST_ALLOC_BLOCK 5000
+#define STD_ABS_PATH_SIZE 5000
 
 #define HEAP_LIST_TRAVERSAL_COUNTER 80000
 
@@ -52,6 +57,21 @@ int detect_loop_in_heap_list(heap_block* head);
 void view_heap_pointer_status();
 void view_heap_alloced_hashmap_status();
 void add_to_free_list_by_pointer(void* ptr, size_t size);
+void* allocate_ptr_array(int count, size_t element_size);
+
+char* getAbsolutePath(char* relPath)
+{
+#ifdef __linux
+    return realpath(relPath, NULL);
+#elif _WIN32
+    char* absPath = allocate_ptr_array(STD_ABS_PATH_SIZE, sizeof(char));
+    GetFullPathNameA(relPath, STD_ABS_PATH_SIZE, absPath, NULL);
+    return absPath;
+#else
+    return NULL;
+#endif
+    return NULL;
+}
 
 void* mem_alloc(size_t size){
     void* new_p;

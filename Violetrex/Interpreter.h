@@ -6,6 +6,8 @@
 
 #define DEFAULT_NO_OF_VALUES 10
 
+Context* processFile(char* filename, char* line, int filesize);
+
 void printValue(Value* value){
     // check_byte_content_of_pointer(value->num, 4 * sizeof(char));
 	if(value == NULL){
@@ -77,6 +79,7 @@ Value* getFunctionCallValue(Node* node, Context* context, int* isNode, int flag_
 Value* getIndexValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 Value* getClassDefinitionValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed);
 Value* getObjectValue(Node* node, Context* context, int* isNode, int method_flag, void* needed_context, char* prefix);
+Value* getImportNodeValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix);
 
 Value** getConditionalNodeValue(Node* node, int* no_of_values, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
     if(node->nodeType != CONDITIONAL_NODE)
@@ -325,7 +328,11 @@ Value* viewNode(Node* node, Context* context, int* isNode, int flag_type, void* 
             answer = getObjectValue(node, context, isNode, flag_type, context_needed, prefix);
             break;
         }
-		default:{
+		case IMPORT_NODE:{
+            answer = getImportNodeValue(node, context, isNode, flag_type, context_needed, prefix);
+            break;
+        }
+        default:{
 			answer = NULL;
 		}
 	}
@@ -513,6 +520,7 @@ Value* getObjectValue(Node* node, Context* context, int* isNode, int flag_type, 
     ClassContext *classContext = NULL, *classContext2 = NULL;
     ObjectContext* objectContext = NULL;
     Value* object_val = NULL;
+    Context* tempContext = NULL;
     int isAmbigious = 0;
     switch (object->nodeType)
     {
@@ -532,6 +540,10 @@ Value* getObjectValue(Node* node, Context* context, int* isNode, int flag_type, 
                     isStatic = 1;
                 }
             }
+            else if(*((int*)result[1]) == TT_CONTEXT){
+                tempContext = (Context*)result[0];
+                return viewNode((Node*)(node->right), tempContext, isNode, flag_type, NULL, NULL);
+            }
             else{
                 object_val = viewNode(object, context, isNode, flag_type, context_needed, prefix);
                 if(object_val == NULL){
@@ -542,7 +554,7 @@ Value* getObjectValue(Node* node, Context* context, int* isNode, int flag_type, 
                         )
                     );
                 }
-                else if(object_val != NULL && object_val->valType != TT_OBJECT){
+                else if(object_val->valType != TT_OBJECT){
                     return construct_Value(
                         make_error(
                             SyntaxError("Object", object->val->line_no, object->val->col_no),
@@ -2036,6 +2048,32 @@ Value* getVarAssignValue(Node* node, Context* context, int* isNode, int flag_typ
 		return val;
     }
 	// token = (Token*)malloc(sizeof(Token));
+    token = (Token*)allocate_ptr_for_size(sizeof(Token));
+	// memcpy(token, node->val, sizeof(Token));
+    copy_heap_alloced_memory(token, node->val, sizeof(Token));
+	token->type = TT_NULL;
+	// token->val = (char*)calloc(5, sizeof(char));
+    token->val = (char*)allocate_ptr_array(5, sizeof(char));
+	strcpy((char*)(token->val), "null");
+	return construct_Value(token);
+}
+
+Value* getImportNodeValue(Node* node, Context* context, int* isNode, int flag_type, void* context_needed, char* prefix){
+    char* parentPath = node->right == NULL ? NULL : ((Node*)node->right)->val->val;
+    parentPath = generateParentDirectory(context->filePath, parentPath);
+    Node** modules = (Node**)node->left;
+    char *filename, *path, *line;
+    Context* file_context;
+    Value* temp_value;
+    Token* token;
+    for(int i = 0; i < node->leftType; i++){
+        filename = modules[i]->val->val;
+        path = merge_strings(parentPath, filename);
+        path = merge_strings(path, ".vrx");
+        line = (char*)allocate_ptr_array(SIZE, sizeof(char));
+        file_context = processFile(path, line, SIZE);
+        modify_context(context, filename, file_context, TT_CONTEXT);
+    }
     token = (Token*)allocate_ptr_for_size(sizeof(Token));
 	// memcpy(token, node->val, sizeof(Token));
     copy_heap_alloced_memory(token, node->val, sizeof(Token));
